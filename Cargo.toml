@@ -1,5 +1,6 @@
 [workspace]
-members = ["tools/architecture-guard"]
+members = ["tools/architecture-guard", "crates/veil-warden-common", "crates/veil-warden-ebpf", "crates/veil-warden"]
+default-members = ["tools/architecture-guard", "crates/veil-warden-common", "crates/veil-warden"]
 resolver = "3"
 
 [workspace.package]
@@ -12,3 +13,8 @@ unsafe_code = "forbid"
 
 [workspace.lints.clippy]
 all = "warn"
+
+[profile.release.package.veil-warden-ebpf]
+debug = 2
+codegen-units = 1
+strip = false

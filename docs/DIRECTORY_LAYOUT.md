@@ -1,8 +1,8 @@
 # veil-warden ディレクトリ構成
 
-## M0 で作成済みの構成
+## 作成済みの構成
 
-環境設定、検証ツール、方針文書を置いています。通信監視・遮断の3クレートは M1 以降に作成します。
+環境設定、検証ツール、方針文書を置いています。M1の3クレートとカウンタもworkspaceに追加しています。
 
 ```text
 veil-warden/
@@ -21,6 +21,9 @@ veil-warden/
 │   └── architecture.toml           # 許可する workspace 内の依存方向
 ├── infra/nixos/vm.nix              # NixOS VM、公開鍵認証、slice
 ├── scripts/
+│   ├── build-counter.sh            # 固定BPF toolchain / stable CLI
+│   ├── build-counter-vm.sh         # MacからLinux builderで構築
+│   ├── test-counter-vm.sh          # 専用VMで受け入れ試験
 │   ├── bootstrap-builder.sh        # Mac 内のローカル Linux builder
 │   ├── build-vm.sh                 # Linux 内で独立した VM イメージを構築
 │   ├── run-vm.sh                   # ホストで専用 VM を起動
@@ -45,9 +48,9 @@ veil-warden/
 
 VM の秘密鍵・ディスク・起動状態はリポジトリ外の `$HOME/.cache/veil-warden-m0` に保存します。詳細は [実行ガイド](GUIDE.md) を参照してください。
 
-## M1 以降に作る構成
+## ランタイム構成
 
-以下は予定です。M0 の検証ツールに依存させず、3つのランタイム crate を workspace に追加します。
+main.rs、counter.rs、cli.rs、loader.rs、commonはM1で作成済みです。connect、policy、events、TUI、scanは以降の予定で、まだファイルを置いていません。M1は独立したビルドスクリプトを使い、build.rsは不要です。
 
 ```text
 crates/
@@ -63,7 +66,6 @@ crates/
 │       └── policy.rs               # M3: 事前ルール参照
 └── veil-warden/
     ├── Cargo.toml
-    ├── build.rs                    # 採用した Aya のビルド方式
     ├── src/
     │   ├── main.rs / cli.rs
     │   ├── loader.rs                # Linux限定、Map/link 所有

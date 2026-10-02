@@ -1,0 +1,7 @@
+# Template reviewed as reference; workspace assembled explicitly, no generator required.
+aya_template_revision = "c0fd79891b5ac8f73c1092bc2a374268d0548c7c"
+aya = "0.14.0"
+aya_ebpf = "0.2.1"
+nightly = "2025-12-01"
+bpf_linker = "0.9.15"
+target = "bpfel-unknown-none"

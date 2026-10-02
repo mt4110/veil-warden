@@ -313,3 +313,54 @@ fn loader_guard_rejects_cross_platform_declarations() {
         &syn::parse_file("#[cfg(target_os = \"linux\")] mod loader;").unwrap()
     ));
 }
+
+// This is a source boundary guard, not a replacement for verifier/runtime tests.
+fn counter_always_allows(source: &str) -> bool {
+    let Ok(file) = syn::parse_file(source) else {
+        return false;
+    };
+    let Some(function) = file.items.iter().find_map(|item| match item {
+        syn::Item::Fn(f) if f.sig.ident == "count_egress" => Some(f),
+        _ => None,
+    }) else {
+        return false;
+    };
+    struct ReturnGuard(bool);
+    impl<'ast> Visit<'ast> for ReturnGuard {
+        fn visit_expr_return(&mut self, node: &'ast syn::ExprReturn) {
+            self.0 = false;
+            visit::visit_expr_return(self, node);
+        }
+        fn visit_macro(&mut self, _: &'ast syn::Macro) {
+            self.0 = false;
+        }
+        fn visit_expr_try(&mut self, _: &'ast syn::ExprTry) {
+            self.0 = false;
+        }
+    }
+    let mut guard = ReturnGuard(true);
+    guard.visit_block(&function.block);
+    guard.0
+        && matches!(function.block.stmts.last(), Some(syn::Stmt::Expr(syn::Expr::Path(path), None)) if path.path.is_ident("ALLOW"))
+}
+#[test]
+fn m1_counter_has_an_unconditional_allow_tail() {
+    let source = fs::read_to_string(root().join("crates/veil-warden-ebpf/src/counter.rs")).unwrap();
+    assert!(counter_always_allows(&source));
+    for unsafe_return in [
+        "0",
+        "return 0; ALLOW",
+        "if true { return 0; } ALLOW",
+        "panic!(); ALLOW",
+        "foo()?; ALLOW",
+    ] {
+        assert!(!counter_always_allows(&format!(
+            "fn count_egress() -> i32 {{ {unsafe_return} }}"
+        )));
+    }
+    let common = syn::parse_file(
+        &fs::read_to_string(root().join("crates/veil-warden-common/src/lib.rs")).unwrap(),
+    )
+    .unwrap();
+    assert!(common.items.iter().any(|item| matches!(item, syn::Item::Const(c) if c.ident == "ALLOW" && matches!(&*c.expr, syn::Expr::Lit(l) if matches!(&l.lit, syn::Lit::Int(v) if v.base10_parse::<i32>().ok() == Some(1))))));
+}

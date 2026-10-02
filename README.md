@@ -4,7 +4,7 @@
 
 Rust と Aya で Linux VM 内の通信を観測し、事前ルールで新規接続を拒否する実験プロジェクトです。指定した合成テストプロセスだけを対象にします。
 
-**M0 サンドボックス構築は完了し、VMの機能・合成通信・復帰を実測済みです。**監視・遮断エンジンは未実装で、macOS 全体や実トークンを監視しません。週末の完成線は M3 の接続拒否・解除です。
+**M0は完了しています。M1の専用cgroup送信パケットカウンタも完了し、IPv4/IPv6・対象外通信の隔離・3種類の終了時解除を実VMで確認済みです。** 通信は常に許可し、ペイロードやPIDは取得しません。週末の完成線は M3 の接続拒否・解除です。
 
 ## 始め方
 
@@ -32,10 +32,20 @@ Apple Silicon Mac では、構築用 VM を一つ目のターミナルで起動�
 
 ```sh
 ./scripts/ssh-vm.sh 'sudo warden-preflight'
-./scripts/ssh-vm.sh 'sudo poweroff'
 ```
 
 初回ダウンロードには数 GiB 程度のディスク容量が必要です。VM の稼働メモリは構築用と専用 VM がそれぞれ最大 4 GiB です。実測した導入結果は [M0](milestones/00-sandbox/README.md) を参照してください。
+
+## M1 パケットカウンタ
+
+構築用・専用VMを起動した状態で、次を実行します。
+
+```sh
+./scripts/build-counter-vm.sh
+./scripts/test-counter-vm.sh
+```
+
+[実行ガイド](docs/GUIDE.md#m1-のビルドと実行)にCLIの起動方法を記載しています。カウントはcgroup_skbが処理するSKB単位で、物理NICのフレーム数とは限りません。
 
 ## 文書
 

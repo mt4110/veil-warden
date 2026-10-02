@@ -39,4 +39,13 @@
 - [固定 nixpkgs の bootstrap builder](https://github.com/NixOS/nixpkgs/blob/4feb8eb8bf30f323a8a5d285f14ee51d6a7197b1/nixos/modules/profiles/nix-builder-vm.nix)：公開ホスト鍵、bootstrap の構成。既定の全インターフェース転送はそのまま使わず loopback へ変更。
 - [NixOS 公式マニュアル](https://nixos.org/manual/nixos/stable/)：宣言的設定と VM の扱い。実装の版判断は上記の固定ソースを優先。
 
-構築用 VM と専用 VM を実際に起動し、機能確認と IPv4/IPv6 の合成通信・復帰を確認しています。Aya/nightly/bpf-linker の採用版は M1 で固定します。
+構築用 VM と専用 VM を実際に起動し、機能確認と IPv4/IPv6 の合成通信・復帰を確認しています。M1の採用版は config/m1-toolchain.toml、Cargo.lock、flake.lockで固定しています。
+
+## M1 採用版の一次資料
+
+- [Aya 0.14.0 CgroupSkb実装](https://github.com/aya-rs/aya/blob/aya-v0.14.0/aya/src/programs/cgroup_skb.rs)：load、attach、FD linkへの変換と終了時の寿命。
+- [Aya 0.14.0 linkとattach mode](https://github.com/aya-rs/aya/blob/aya-v0.14.0/aya/src/programs/links.rs)：Ayaのflags=0を使い、LinuxのBPF_LINK_CREATEが内部でALLOW_MULTIを追加する挙動を確認。
+- [aya-ebpf 0.2.1 PerCpuArray](https://github.com/aya-rs/aya/blob/aya-ebpf-v0.2.1/ebpf/aya-ebpf/src/maps/per_cpu_array.rs)：固定長counterのMap参照。
+- [bpf-linker 0.9.15](https://github.com/aya-rs/bpf-linker/blob/v0.9.15/Cargo.toml)：LLVM 21の対応を確認し、LLVM 21のnightlyを選択。
+- [固定Aya template](https://github.com/aya-rs/aya-template/tree/c0fd79891b5ac8f73c1092bc2a374268d0548c7c)：依存版・workspaceの参考。generatorは実行せず最小構成を作成。
+- [Linux 6.18 cgroup BPF](https://github.com/torvalds/linux/blob/v6.18/kernel/bpf/cgroup.c)：cgroup_skb送信時の戻り値1は許可。

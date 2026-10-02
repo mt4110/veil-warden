@@ -12,7 +12,7 @@ if [[ "$(uname -s)" == Darwin ]]; then
   remote="/home/builder/veil-warden-source-$revision"
   archive="$state/sandbox/source-$revision.tar.gz"
   COPYFILE_DISABLE=1 tar --no-xattrs -czf "$archive" -C "$repo" flake.nix flake.lock Cargo.toml Cargo.lock \
-    rust-toolchain.toml config infra tests tools
+    rust-toolchain.toml .cargo crates config infra tests tools
   scp "${ssh_options[@]}" -P 32222 "$archive" builder@127.0.0.1:source.tar.gz
   ssh "${ssh_options[@]}" -p 32222 builder@127.0.0.1 \
     "set -eu; mkdir -p '$remote'; tar -xzf source.tar.gz -C '$remote'; nix --extra-experimental-features 'nix-command flakes' build 'path:$remote#packages.aarch64-linux.sandbox-bundle' --no-link --print-out-paths --max-jobs 2" \

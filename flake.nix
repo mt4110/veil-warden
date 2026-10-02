@@ -1,10 +1,17 @@
 {
-  description = "veil-warden reproducible M0 sandbox and checks";
+  description = "veil-warden reproducible sandbox and M1 counter";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/4feb8eb8bf30f323a8a5d285f14ee51d6a7197b1";
 
+  inputs.rust-overlay.url = "github:oxalica/rust-overlay/368fee9beaab04ca6fe7af28db63caa9badb22fa";
+  inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
+
   outputs =
-    { self, nixpkgs }:
+    {
+      self,
+      nixpkgs,
+      rust-overlay,
+    }:
     let
       systems = [
         "aarch64-darwin"
@@ -12,6 +19,13 @@
         "x86_64-linux"
       ];
       eachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
+      bpfToolchain =
+        system:
+        (import nixpkgs {
+          inherit system;
+          overlays = [ rust-overlay.overlays.default ];
+        }).rust-bin.nightly."2025-12-01".minimal.override
+          { extensions = [ "rust-src" ]; };
       sandbox = builtins.fromTOML (builtins.readFile ./config/sandbox.toml);
       mkVm =
         hostSystem:
@@ -80,10 +94,24 @@
           version = "0.0.0";
           src = cleanSource;
           cargoLock.lockFile = ./Cargo.lock;
+          cargoBuildFlags = [
+            "-p"
+            "architecture-guard"
+          ];
+          cargoTestFlags = [
+            "-p"
+            "architecture-guard"
+          ];
           doCheck = true;
         };
       });
       devShells = eachSystem (pkgs: {
+        bpf = pkgs.mkShell {
+          packages = [
+            (bpfToolchain pkgs.stdenv.hostPlatform.system)
+            pkgs.bpf-linker
+          ];
+        };
         default = pkgs.mkShell {
           packages = with pkgs; [
             rustc
@@ -101,7 +129,7 @@
           ];
           shellHook = ''
             export RUST_BACKTRACE=1
-            echo "veil-warden M0: Rust ${pkgs.rustc.version}; no eBPF attach"
+            echo "veil-warden: Rust ${pkgs.rustc.version}; loading only in the dedicated Linux VM"
           '';
         };
       });

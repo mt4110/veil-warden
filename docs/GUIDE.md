@@ -1,4 +1,4 @@
-# veil-warden M0 実行ガイド
+# veil-warden 実行ガイド
 
 ## 前提
 
@@ -11,7 +11,7 @@ nix develop "path:$PWD"
 ./scripts/check.sh
 ```
 
-M0 の stable Rust と整形・リントは固定 nixpkgs 由来です。nightly/Aya/bpf-linker は M1 で追加するため、現段階の shell に含めません。
+M0 の stable Rust と整形・リントは固定 nixpkgs 由来です。M1 の BPF ビルドは別の `#bpf` shell を使います。nightly-2025-12-01（LLVM 21）と bpf-linker 0.9.15 を組み合わせ、通常のCLI・ガードは stable 1.95.0 のままです。
 
 ## 構築用 VM
 
@@ -73,3 +73,31 @@ mkdir -p artifacts/m0
 ポートが使用中なら既存の VM を確認し、重複起動しません。SSH が起動前なら、コンソールで起動を確認してから再試行します。鍵検証に失敗したら検証を無効にせず、対象の起動と known_hosts を確認します。
 
 Markdown/Rust/Nix の検証失敗は原因を修正してから再実行します。M0 の環境構築が3時間の作業枠で成立しない場合は結果と阻害要因を記録して停止します。
+
+## M1 のビルドと実行
+
+Apple Siliconでは、構築用VMと専用VMを起動し、ホストのリポジトリで実行します。
+
+```sh
+./scripts/build-counter-vm.sh
+./scripts/test-counter-vm.sh
+```
+
+ビルドスクリプトは明示したソースだけを構築用VMへコピーします。成果物は状態ディレクトリの `m1/build-日時-PID`、受け入れ試験のJSONは `artifacts/m1/acceptance-日時-PID.json` に保持します。テスト用コピーは専用VMの `/home/warden/warden-m1-日時-PID` に置きます。既存のホスト成果物を削除しません。
+
+受け入れ試験はIPv4/IPv6で8個ずつ合成UDPデータグラムを送り、受信・カウント増加を確認します。対象外の同じ通信ではカウンタが増えないこと、通常終了・SIGTERM・SIGKILLで自作リンクだけが消えること、管理SSHが維持されることも確認します。
+
+CLIを手動で使う場合、転送先のパスを試験スクリプトから確認して、専用VM内で実行します。
+
+```sh
+sudo systemctl start warden-test.slice
+sudo /home/warden/warden-m1-日時-PID/veil-warden \
+  --object /home/warden/warden-m1-日時-PID/veil-warden-ebpf \
+  --interval-ms 1000 --samples 10
+```
+
+`--samples 0`（既定）はSIGINT/SIGTERMまで継続します。対象cgroupは固定で、変更する引数はありません。クライアントは `systemd-run --slice=warden-test.slice` で所属してからソケットを作ります。CLI自体は対象sliceの外で実行します。ヘッダやペイロードの収集・書き換え、宛先別集計は行いません。
+
+Linuxでソースからビルドする場合は `./scripts/build-counter.sh` を使います。BPFオブジェクトは `target/bpfel-unknown-none/release/veil-warden-ebpf`、CLIは `target/release/veil-warden` です。自分でビルドしたオブジェクトだけをロードしてください。任意のオブジェクトの安全性をCLIが証明する機能はありません。
+
+起動時の読み込み・Map・attach失敗はエラー終了します。既存のsystemdファイアウォールと共存するcgroup BPF linkを使い、既存programを上書き・解除しません。`/run/veil-warden-counter.lock` のFDロックで同じCLIの二重起動を拒否します。ロックファイルが存在していても、終了後はFDロックが解放されて再起動できます。

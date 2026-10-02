@@ -17,3 +17,9 @@ BPF link の列挙ができることは確認しますが、自作プログラ�
 ローカルの `artifacts/m0` に Nix 設定の版、preflight の JSON、boot ID と slice の資源制限を記録します。Git には非機密の結果概要を [M0](../../milestones/00-sandbox/README.md) に残します。
 
 VM 以外の環境で root として実行しないでください。preflight は root の feature probe と専用 systemd unit を使います。実秘密・外部 IP・payload を試験へ追加しません。
+
+## M1 の受け入れ試験
+
+`./scripts/build-counter-vm.sh` の後に `./scripts/test-counter-vm.sh` を実行します。`cases/packet_counter.py` は実際のAya CLIを起動し、固定合成UDPのIPv4/IPv6受信、counter増加、対象外隔離、終了後のlink消失を検証します。CLIのroot scope指定・ロード失敗・二重起動も拒否される必要があります。
+
+通常終了・SIGTERM・SIGKILLは別々に実attachして調べます。systemd自身のprogram IDは再生成で変わり得るため、ID以外の全attachment fieldと自作linkの消失を確認します。ローカルJSONは `artifacts/m1`、共有できる概要は [M1](../../milestones/01-packet-counter/README.md) に記載します。
