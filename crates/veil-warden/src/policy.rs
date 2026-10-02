@@ -69,9 +69,16 @@ pub mod control {
             }
             Ok(this)
         }
-        fn add(&mut self, k: RuleKey) -> Result<u32, Error> {
+        pub(crate) fn add(&mut self, k: RuleKey) -> Result<u32, Error> {
             if !self.enforce {
                 return Err("observe mode cannot change deny rules".into());
+            }
+            if k[19] != TCP
+                || !matches!(k[18], 4 | 6)
+                || k[16..18] == [0, 0]
+                || (k[18] == 4 && k[4..16] != [0; 12])
+            {
+                return Err("invalid TCP destination tuple".into());
             }
             let id = self.next_id;
             let next = id.checked_add(1).ok_or("policy ID exhausted")?;
@@ -79,6 +86,18 @@ pub mod control {
             self.map.insert(k, id, 1)?;
             self.next_id = next;
             Ok(id)
+        }
+        pub(crate) fn rules(&self) -> Result<Vec<(RuleKey, u32)>, Error> {
+            let mut rules = self.map.iter().collect::<Result<Vec<_>, _>>()?;
+            rules.sort_by_key(|(key, _)| *key);
+            Ok(rules)
+        }
+        pub(crate) fn remove(&mut self, key: RuleKey) -> Result<(), Error> {
+            if !self.enforce {
+                return Err("observe mode cannot change deny rules".into());
+            }
+            self.map.remove(&key)?;
+            Ok(())
         }
         fn list(&self) -> Result<String, Error> {
             let mut rows = Vec::new();
@@ -116,7 +135,7 @@ pub mod control {
                         return Err("observe mode cannot change deny rules".into());
                     }
                     let k = key(ip, port)?;
-                    self.map.remove(&k)?;
+                    self.remove(k)?;
                     Ok(format!(
                         "removed destination={}\n{}",
                         destination(&k),

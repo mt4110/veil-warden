@@ -45,3 +45,7 @@ M1 の nightly Rust、aya/aya-ebpf、bpf-linker はまだ未選定です。採�
 既定observeと明示enforceを区別し、ルール一致だけで新規TCP接続を拒否します。keyのfamily/IP/port/protocol、IPv4-mapped IPv6正規化、ABIのactionとpolicy ID整合を純粋Rustテストで確認します。M1の無条件許可ガードを維持し、M3の両フックは共通の判断処理を使うことを構造検査します。
 
 実VM試験では拒否クライアントのerrno、受信側のデータゼロ、解除後の両familyの接続、対象外・異なるIP/port・UDPを確認します。Map上限と重複/不存在の操作は失敗し、実Mapの現状が変わらないことを確認します。既存接続の継続と、ログ欠落中の拒否継続も別々に検証します。モックや静的検査でこれらを代用しません。
+
+## M4の検証
+
+描画内容・有界履歴・確認中tupleの保持はTestBackendと純粋状態テストで確認します。Linux PTYでは実キー、リサイズ、Map更新、errno、termiosとalternate screenの復元、BPF link解除を確認します。描画失敗はテスト専用writerで発生させ、ignored fixtureをPTY内で明示実行します。通常のテストでignoredだったことを実行証拠にしません。

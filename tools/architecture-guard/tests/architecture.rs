@@ -413,3 +413,44 @@ fn m3_hooks_share_scoped_policy_and_user_metadata_reads_are_scoped() {
         }
     }
 }
+
+#[test]
+fn tui_stays_in_user_layer_and_has_no_daemon_control_client() {
+    let source = fs::read_to_string(root().join("crates/veil-warden/src/tui.rs")).unwrap();
+    struct Calls(Vec<String>);
+    impl<'ast> Visit<'ast> for Calls {
+        fn visit_expr_call(&mut self, node: &'ast syn::ExprCall) {
+            if let syn::Expr::Path(p) = &*node.func {
+                self.0.push(
+                    p.path
+                        .segments
+                        .iter()
+                        .map(|s| s.ident.to_string())
+                        .collect::<Vec<_>>()
+                        .join("::"),
+                );
+            }
+            visit::visit_expr_call(self, node);
+        }
+    }
+    let mut calls = Calls(Vec::new());
+    calls.visit_file(&syn::parse_file(&source).unwrap());
+    assert!(
+        !calls
+            .0
+            .iter()
+            .any(|s| s.ends_with("control::client") || s.ends_with("UnixStream::connect_addr")),
+        "TUI must use the owned controller, not daemon IPC"
+    );
+    for path in [
+        "crates/veil-warden-common/Cargo.toml",
+        "crates/veil-warden-ebpf/Cargo.toml",
+    ] {
+        let mut deps = BTreeSet::new();
+        dependency_packages(&read_toml(&root().join(path)), &mut deps);
+        assert!(
+            deps.is_disjoint(&BTreeSet::from(["ratatui".into(), "crossterm".into()])),
+            "UI dependencies leaked into {path}"
+        );
+    }
+}

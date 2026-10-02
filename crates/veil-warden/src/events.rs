@@ -12,7 +12,10 @@ use aya::{
 use std::{
     fs::File,
     io::{self, Write},
-    sync::atomic::{AtomicBool, Ordering},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
     time::{Duration, Instant},
 };
 use tokio::{io::unix::AsyncFd, sync::mpsc};
@@ -20,12 +23,32 @@ use veil_warden_common::{ENFORCE, STAT_ATTEMPTS, STAT_DENIED, STAT_EMITTED, STAT
 type Error = Box<dyn std::error::Error>;
 type StatsMap = PerCpuArray<MapData, u64>;
 
-pub fn run(options: Options, stop: &AtomicBool) -> Result<(), Error> {
-    tokio::runtime::Builder::new_current_thread()
+pub fn run(options: Options, stop: &Arc<AtomicBool>) -> Result<(), Error> {
+    let (mut ui, mut commands) = if options.tui {
+        let (ui, commands) = crate::tui::runtime::Ui::start(options.enforce, stop.clone())?;
+        (Some(ui), Some(commands))
+    } else {
+        (None, None)
+    };
+    let result = tokio::runtime::Builder::new_current_thread()
         .enable_io()
         .enable_time()
         .build()?
-        .block_on(observe(options, stop))
+        .block_on(observe(options, stop, ui.as_ref(), &mut commands));
+    let frontend = if let Some(ui) = ui.as_mut() {
+        if let Err(error) = &result {
+            ui.state(|s| s.error = Some(error.to_string()))?;
+        }
+        ui.finish()
+    } else {
+        Ok(())
+    };
+    match (result, frontend) {
+        (Err(backend), Err(frontend)) => Err(format!("{backend}; TUI: {frontend}").into()),
+        (Err(error), _) => Err(error),
+        (_, Err(error)) => Err(error.into()),
+        _ => Ok(()),
+    }
 }
 fn attach(bpf: &mut Ebpf, cgroup: &File, name: &str) -> Result<FdLink, Error> {
     let p: &mut CgroupSockAddr = bpf
@@ -81,7 +104,12 @@ fn queue_event(
         Err(mpsc::error::TrySendError::Closed(_)) => Err("output worker stopped".into()),
     }
 }
-async fn observe(options: Options, stop: &AtomicBool) -> Result<(), Error> {
+async fn observe(
+    options: Options,
+    stop: &AtomicBool,
+    ui: Option<&crate::tui::runtime::Ui>,
+    commands: &mut Option<mpsc::Receiver<crate::tui::Command>>,
+) -> Result<(), Error> {
     let instance = File::create("/run/veil-warden-connect.lock")?;
     instance.try_lock()?;
     let cgroup = File::open("/sys/fs/cgroup/warden.slice/warden-test.slice")?;
@@ -101,12 +129,21 @@ async fn observe(options: Options, stop: &AtomicBool) -> Result<(), Error> {
     let link4 = attach(&mut bpf, &cgroup, "monitor_connect4")?;
     let link6 = attach(&mut bpf, &cgroup, "monitor_connect6")?;
     let (tx, rx) = mpsc::channel(QUEUE_CAPACITY);
-    let worker = std::thread::Builder::new()
-        .name("connect-output".into())
-        .spawn(move || output::worker(rx))?;
+    let worker = if let Some(ui) = ui {
+        let rows = ui.rows.clone();
+        let dropped = ui.dropped.clone();
+        std::thread::Builder::new()
+            .name("connect-names".into())
+            .spawn(move || crate::tui::runtime::worker(rx, rows, dropped))?
+    } else {
+        std::thread::Builder::new()
+            .name("connect-output".into())
+            .spawn(move || output::worker(rx))?
+    };
     let result = async {
+        if let Some(ui)=ui {let rules=policy.rules()?;ui.state(|s|{s.ready=true;s.rules=rules;})?;} else {
         writeln!(io::stdout(),"attached mode=connect scope=/warden.slice/warden-test.slice links=2 observation=attempt_only policy_mode={}",if options.enforce {"enforce"}else{"observe"})?;
-        io::stdout().flush()?;
+        io::stdout().flush()?; }
         let start=Instant::now(); let mut last_stats=start;
         let mut tick=tokio::time::interval(Duration::from_millis(20));
         let mut stats=Snapshot::default();
@@ -119,8 +156,22 @@ async fn observe(options: Options, stop: &AtomicBool) -> Result<(), Error> {
                     if drain(guard.get_inner_mut(),&tx,&mut stats)? { guard.clear_ready(); }
                 },
                 _=tick.tick() => {
+                    if let (Some(ui),Some(commands))=(ui,commands.as_mut()) {
+                        if commands.is_closed(){return Err::<Snapshot,Error>("TUI input stopped".into());}
+                        if let Ok(command)=commands.try_recv() {
+                            let result=match command {
+                                crate::tui::Command::Add(key)=>policy.add(key).map(|id|format!("拒否 ID={id} {} TCP",crate::policy::destination(&key))),
+                                crate::tui::Command::Remove(key)=>policy.remove(key).map(|()|format!("解除 {} TCP",crate::policy::destination(&key))),
+                            };
+                            let reply=result.map_err(|e|format!("{e:?}"));
+                            let rules=policy.rules()?;ui.state(|s|{s.reply=Some(reply);s.rules=rules;})?;
+                        }
+                    }
+
                     if last_stats.elapsed() >= options.interval {
-                        let message=Message::Stats(snapshot(&stats_map,stats)?,false);
+                        let current=snapshot(&stats_map,stats)?;
+                        if let Some(ui)=ui {let rules=policy.rules()?;ui.state(|s|{s.stats=current;s.rules=rules;})?;}
+                        let message=Message::Stats(current,false);
                         match tx.try_send(message) {
                             Ok(()) | Err(mpsc::error::TrySendError::Full(_)) => {},
                             Err(mpsc::error::TrySendError::Closed(_)) => return Err::<Snapshot,Error>("output worker stopped".into()),
@@ -141,7 +192,11 @@ async fn observe(options: Options, stop: &AtomicBool) -> Result<(), Error> {
                 while !drain(ring.get_mut(), &tx, &mut stats)? {
                     tokio::task::yield_now().await;
                 }
-                tx.send(Message::Stats(snapshot(&stats_map, stats)?, true))
+                let final_stats = snapshot(&stats_map, stats)?;
+                if let Some(ui) = ui {
+                    ui.state(|s| s.stats = final_stats)?;
+                }
+                tx.send(Message::Stats(final_stats, true))
                     .await
                     .map_err(|_| "output worker stopped")?;
                 Ok::<(), Error>(())
@@ -154,7 +209,9 @@ async fn observe(options: Options, stop: &AtomicBool) -> Result<(), Error> {
     let output_result = worker.join().map_err(|_| "output worker panicked")?;
     result?;
     output_result?;
-    writeln!(io::stdout(), "detached mode=connect")?;
+    if ui.is_none() {
+        writeln!(io::stdout(), "detached mode=connect")?;
+    }
     Ok(())
 }
 

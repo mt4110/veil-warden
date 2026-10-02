@@ -65,3 +65,10 @@
 - [Linux v6.18 cgroup BPF実装](https://github.com/torvalds/linux/blob/v6.18/kernel/bpf/cgroup.c)：connectフックの拒否はEPERM、BPF linkのflags処理を確認。固定6.18.54の実VMでも拒否errnoとリンク解放を検証。
 
 abstract Unix socketとpeer credentialは固定Rust 1.95.0の標準APIおよびTokio 1.53.1を使用し、Linuxのコンパイルとroot/非rootの実行試験で確認します。
+
+## M4 採用版
+
+- [Ratatui公式インストール説明](https://ratatui.rs/installation/)：0.30.2はRust 1.88以上、Crossterm 0.29と対応。固定Rust 1.95.0でビルドする。
+- [Crossterm 0.29.0 read/poll](https://docs.rs/crossterm/0.29.0/crossterm/event/fn.read.html)：同じ描画threadでpoll/readし、Pressイベントだけを操作として扱う。
+
+ratatui=0.30.2、crossterm=0.29.0をCargo.tomlで厳密指定し、推移依存もCargo.lockに固定する。両crateの公開manifestでMITライセンスを確認。Nixのtoolchain固定を継続し、miseやrustupで環境を切り替えない。

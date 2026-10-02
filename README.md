@@ -4,7 +4,7 @@
 
 Rust と Aya で Linux VM 内の通信を観測し、事前ルールで新規接続を拒否する実験プロジェクトです。指定した合成テストプロセスだけを対象にします。
 
-**M3まで完了し、専用NixOS VMで検証済みです。** M1は送信SKB数、M2はTCP IPv4/IPv6の接続試行とPID/TID・宛先を表示します。M3は明示した宛先ルールに一致する新規TCP接続を拒否・解除します。既定は監視のみです。ペイロード・引数・環境変数は取得しません。
+**M4まで完了し、専用NixOS VMで検証済みです。** M1は送信SKB数、M2はTCP IPv4/IPv6の接続試行とPID/TID・宛先を表示します。M3は明示した宛先ルールに一致する新規TCP接続を拒否・解除します。既定は監視のみです。ペイロード・引数・環境変数は取得しません。
 
 ## 始め方
 
@@ -68,6 +68,18 @@ CLIの `connect` モードは接続試行を表示します。接続成功や通
 `connect --enforce --deny IP PORT` で事前ルールを指定します。稼働中は `policy add IP PORT`、`policy remove IP PORT`、`policy list` で操作します。すべて専用VM内のroot操作です。ルールは最大16件、IPv4-mapped IPv6も同じIPv4ルールに照合します。
 
 IPv4/IPv6の拒否・解除、対象外通信、容量超過、既存接続の継続、3種類の終了後の復帰を実測しました。ログ欠落時も拒否判断は変わりません。既存接続・UDP/QUIC・秘密の流出防止は保証対象外です。[操作ガイド](docs/GUIDE.md#m3-接続拒否と解除の実行)と[M3記録](milestones/03-connect-policy/README.md)を参照してください。
+
+## M3A デモとM4 TUI
+
+[短いデモ](docs/DEMO.md)は監視・拒否・解除・終了後の復帰を5段階で確認します。
+
+```sh
+./scripts/demo-policy-vm.sh
+./scripts/tui-vm.sh             # 監視のみ
+./scripts/tui-vm.sh --enforce   # 明示した宛先の拒否・解除
+```
+
+TUIは接続履歴、拒否ルール、モード、欠落数を表示します。Tabと↑↓/j/kで選択し、bで拒否、dで解除を準備、宛先を確認してEnterで実行します。Escで取消、q/Ctrl+Cで終了します。履歴は128件に制限し、拒否状態を文字でも表示します。実端末から起動してください。[操作ガイド](docs/GUIDE.md#m4-tuiの実行)と[M4検証記録](milestones/04-tui/README.md)を参照してください。
 
 ## 文書
 

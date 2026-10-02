@@ -4,7 +4,7 @@
 
 An experimental Rust and Aya project for observing network activity in a dedicated Linux VM and denying new connections using preconfigured rules. Only synthetic clients in the dedicated test cgroup are in scope.
 
-**M0 through M3 are complete and verified in the dedicated NixOS VM.** M1 counts egress SKBs. M2 reports TCP IPv4/IPv6 connection attempts, destinations, TGID/TID, and best-effort process names. M3 denies new TCP connections matching explicit destination rules in the dedicated cgroup. Observe is the default. No payloads, command arguments, or environment variables are collected.
+**M0 through M4 are implemented and tested in the dedicated NixOS VM.** M1 counts egress SKBs. M2 reports TCP IPv4/IPv6 connection attempts, destinations, TGID/TID, and best-effort process names. M3 denies new TCP connections matching explicit destination rules in the dedicated cgroup. Observe is the default. No payloads, command arguments, or environment variables are collected.
 
 ## Getting started
 
@@ -82,3 +82,13 @@ Architecture guards verify repository boundaries and the M0 policy. They do not 
 Inside the dedicated VM, run `connect --enforce --deny IP PORT` with the object path to install a rule before attaching. As root, use `policy add IP PORT`, `policy remove IP PORT`, and `policy list` while it runs. Rules match address family, address, port, and TCP; IPv4-mapped IPv6 is normalized to IPv4. Capacity is 16 rules. Updates are not persistent and errors return a nonzero exit status with the current map state.
 
 VM acceptance covers IPv4/IPv6 denial and recovery, unaffected destinations and outside traffic, existing connections, capacity failure, partial attachment failure, and normal/SIGTERM/SIGKILL exits. All 4,096 attempts in the overload test were denied even with ring-buffer losses. This does not stop existing connections, inspect TLS, or prevent secret leaks. The monitor stops protecting new connections when it exits. See the [Japanese operation guide](docs/GUIDE.md#m3-接続拒否と解除の実行) and [M3 evidence](milestones/03-connect-policy/README.md).
+
+## M3A demo and M4 TUI
+
+```sh
+./scripts/demo-policy-vm.sh
+./scripts/tui-vm.sh             # observe
+./scripts/tui-vm.sh --enforce   # explicit deny/remove actions
+```
+
+Run from an interactive terminal with both VMs started and artifacts built. The demo verifies observe, deny, remove, deny again, and recovery after exit. The TUI displays connection attempts, rules, mode, scope, and separate loss counters. History is bounded to 128 entries. Tab selects a pane, arrows or j/k select a row, b prepares a deny rule, d prepares removal, Enter confirms the displayed tuple, Esc cancels, and q/Ctrl+C exits. Observe mode rejects policy changes. Normal exits restore the terminal and release the owned BPF links; SIGKILL cannot restore terminal settings. See the [operation guide](docs/GUIDE.md#m4-tuiの実行) and [PTY evidence](milestones/04-tui/README.md).

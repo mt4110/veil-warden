@@ -96,7 +96,7 @@ NixOS のサービスは M6 で実装し、初期は無効・observe。CLI/daemo
 
 M0 の VM 設定と Rust のアーキテクチャガードを実装しました。専用 slice の実パスは `/warden.slice/warden-test.slice` です。環境はルートの flake/lock で固定し、専用 VM の root は一時的なメモリ領域、共有は公開鍵ディレクトリだけに限定しています。
 
-M1のcounterとM2のConnectEvent ABI、RingBuf、非同期受信は実装済みです。M3の通信拒否・ルールMap・root用制御ソケットも実装済みです。TUIとsecret scanは以降の設計です。M2でも正常終了・SIGTERM・SIGKILLと部分起動失敗のリンク解放を実測しています。実測結果は [M0](../milestones/00-sandbox/README.md)、安全性の説明は [安全性文書](SAFETY.md) を参照してください。
+M1のcounterとM2のConnectEvent ABI、RingBuf、非同期受信は実装済みです。M3の通信拒否・ルールMap・root用制御ソケットも実装済みです。M4のTUIも実装済みです。secret scanは以降の設計です。M2でも正常終了・SIGTERM・SIGKILLと部分起動失敗のリンク解放を実測しています。実測結果は [M0](../milestones/00-sandbox/README.md)、安全性の説明は [安全性文書](SAFETY.md) を参照してください。
 
 ## M3 制御経路と判断の順序
 
@@ -105,3 +105,11 @@ CLIは `--enforce` を明示したときだけ拒否Mapを参照するモード�
 ユーザー空間のcontrollerはMapを所有し、追加はBPF_NOEXISTで重複を拒否、解除は存在しないキーもエラーにする。Map操作の成功後だけ成功応答を返す。失敗時は原因と現在のMap一覧を返し、CLIは非ゼロで終了する。各操作は単一キーに限り、ルール集合全体のtransactionやconnectと更新の厳密な時刻順序は保証しない。
 
 制御はLinux abstract Unix socket `veil-warden-policy` を使う。ファイルを作成せず、pinもせず、プロセス終了でendpointを解放する。peer credentialのUID 0だけを受け付け、クライアントもサーバーのUID 0を確認する。要求は256 byte、応答は4096 byte以内、通信は2秒のサーバーtimeoutと3秒のクライアントtimeoutで制限する。処理は受信ループと直列なので、遅い制御要求はログ受信を最長2秒遅らせ得る。kernelの拒否判断は独立して継続する。
+
+## M4 TUIの所有と状態
+
+`connect --tui` はM3と同じloader・RingBuf・controllerを使う。描画・入力は専用thread、comm解決は別worker、受信とMap更新は既存のTokioループが担当する。frontendはrule keyを有界操作queueへ送り、controllerが実Mapを書き換える。TUIは制御socketに接続せず、新しいdaemon IPCも作らない。
+
+backendの準備状態・最新stats・最大16件のルール・単一操作応答をMutexで共有する。短い状態コピー中だけlockを保持し、描画やproc読み取り中に保持しない。イベントは128件のqueueを2段通し、2段目の欠落も独立計数する。UI履歴は128件のVecDequeで、確認中のtupleは履歴とは別に保持する。操作待ちの間は次の操作を準備しない。
+
+UI起動のraw mode / alternate screenはSessionが所有する。初期描画に失敗したらBPFをattachせず復元する。途中のエラー・終了は取得済みlinkを解放し、backendの終了状態を伝えてfrontendをjoinする。SessionのDropでも復元を試みる。SIGKILL/abortではRustのDropは動かないため端末復元は保証しない。

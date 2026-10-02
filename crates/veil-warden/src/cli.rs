@@ -9,6 +9,7 @@ pub enum Mode {
 pub struct Options {
     pub object: PathBuf,
     pub enforce: bool,
+    pub tui: bool,
     pub initial_rule: Option<veil_warden_common::RuleKey>,
     pub mode: Mode,
     pub duration: Duration,
@@ -23,6 +24,7 @@ pub fn parse(
     let mut args = args;
     let mut object = None;
     let mut enforce = false;
+    let mut tui = false;
     let mut initial_rule = None;
     let mut interval = 1000;
     let mut samples = 0;
@@ -31,6 +33,7 @@ pub fn parse(
     let mut reader_delay = 0;
     while let Some(arg) = args.next() {
         match arg.as_str() {
+            "--tui" => tui = true,
             "--enforce" => enforce = true,
             "--deny" if initial_rule.is_none() => {
                 let ip = args.next().ok_or("missing deny IP")?;
@@ -44,7 +47,7 @@ pub fn parse(
             }
             "--help" | "-h" => {
                 println!(
-                    "veil-warden --object PATH [--interval-ms 10..60000] [--samples N]\nDefault: egress SKB counter. Add connect for TCP connect attempts (not connection success).\nconnect: [--duration-ms 0..600000] [--reader-delay-ms 0..1000 diagnostic]\nDefault observe; connect --enforce [--deny IP PORT].\nRuntime: policy list | add IP PORT | remove IP PORT; fixed VM test slice."
+                    "veil-warden --object PATH [--interval-ms 10..60000] [--samples N]\nDefault: egress SKB counter. Add connect for TCP connect attempts (not connection success).\nconnect: [--duration-ms 0..600000] [--reader-delay-ms 0..1000 diagnostic]\nDefault observe; connect [--tui] [--enforce] [--deny IP PORT].\nRuntime: policy list | add IP PORT | remove IP PORT; fixed VM test slice."
                 );
                 return Ok(None);
             }
@@ -65,7 +68,7 @@ pub fn parse(
     {
         return Err("--samples is for the counter; duration/delay are for connect".into());
     }
-    if (enforce || initial_rule.is_some()) && mode != Mode::Connect {
+    if (tui || enforce || initial_rule.is_some()) && mode != Mode::Connect {
         return Err("policy requires connect mode".into());
     }
     if initial_rule.is_some() && !enforce {
@@ -73,6 +76,7 @@ pub fn parse(
     }
     Ok(Some(Options {
         enforce,
+        tui,
         initial_rule,
         mode,
         duration: Duration::from_millis(duration),
@@ -96,6 +100,7 @@ mod tests {
             "--object x --interval-ms 60001",
             "--object x --samples -1",
             "--object x --cgroup /",
+            "--object x --tui",
             "--object",
         ] {
             assert!(parse(args(s)).is_err(), "{s}");

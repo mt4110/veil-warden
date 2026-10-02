@@ -6,12 +6,14 @@ mod decode;
 mod events;
 #[cfg(target_os = "linux")]
 mod loader;
-#[cfg(target_os = "linux")]
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 mod output;
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 mod policy;
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 mod process;
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+mod tui;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.first().is_some_and(|s| s == "policy") {
@@ -35,6 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             duration,
             reader_delay,
             enforce,
+            tui,
             initial_rule,
         } = options;
         let _ = (
@@ -45,6 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             duration,
             reader_delay,
             enforce,
+            tui,
             initial_rule,
         );
         Err("eBPF loading requires the dedicated Linux VM".into())

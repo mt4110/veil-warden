@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: MIT
+#[cfg(target_os = "linux")]
 use crate::process;
+#[cfg(target_os = "linux")]
 use std::{
     io::{self, Write},
     net::{Ipv4Addr, Ipv6Addr},
 };
+#[cfg(target_os = "linux")]
 use tokio::sync::mpsc::Receiver;
+#[cfg(target_os = "linux")]
 use veil_warden_common::{ConnectEvent, RING_BYTES};
 pub const QUEUE_CAPACITY: usize = 128;
 #[derive(Default, Clone, Copy)]
@@ -17,10 +21,12 @@ pub struct Snapshot {
     pub decode_errors: u64,
     pub queue_dropped: u64,
 }
+#[cfg(target_os = "linux")]
 pub enum Message {
     Event(ConnectEvent),
     Stats(Snapshot, bool),
 }
+#[cfg(target_os = "linux")]
 pub fn worker(mut rx: Receiver<Message>) -> io::Result<()> {
     let mut displayed = 0u64;
     while let Some(message) = rx.blocking_recv() {

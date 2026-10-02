@@ -26,6 +26,9 @@ veil-warden/
 │   ├── test-counter-vm.sh          # M1実VM試験
 │   ├── test-connect-vm.sh          # M2実VM試験
 │   ├── test-policy-vm.sh           # M3実VM試験
+│   ├── demo-policy-vm.sh           # M3Aの5段階デモ
+│   ├── test-tui-vm.sh              # M4実PTY試験
+│   ├── tui-vm.sh                   # 実端末からTUI起動
 │   ├── bootstrap-builder.sh        # Mac 内のローカル Linux builder
 │   ├── build-vm.sh                 # Linux 内で独立した VM イメージを構築
 │   ├── run-vm.sh                   # ホストで専用 VM を起動
@@ -53,7 +56,7 @@ VM の秘密鍵・ディスク・起動状態はリポジトリ外の `$HOME/.ca
 
 ## ランタイム構成
 
-M1のcounterに加え、M2のconnect、decode、events、process、outputを作成済みです。M3のルールMap・判断はkernelのconnect.rs、追加/解除/一覧はuserのpolicy.rsに実装しています。TUI、scanは以降の予定で、まだファイルを置いていません。M1は独立したビルドスクリプトを使い、build.rsは不要です。
+M1のcounterに加え、M2のconnect、decode、events、process、outputを作成済みです。M3のルールMap・判断はkernelのconnect.rs、追加/解除/一覧はuserのpolicy.rsに実装しています。M4のTUIも実装済みで、scanは未作成です。M1は独立したビルドスクリプトを使い、build.rsは不要です。
 
 ```text
 crates/
@@ -74,7 +77,7 @@ crates/
     │   ├── loader.rs                # Linux限定、Map/link 所有
     │   ├── decode.rs / events.rs / process.rs / output.rs
     │   ├── policy.rs                 # M3: tuple検証、Map操作、root制御socket
-    │   ├── tui.rs                   # M4予定
+    │   ├── tui.rs                   # M4: 状態、描画、入力、端末復元
     │   └── scan.rs                  # M5予定
     └── tests/
 ```

@@ -33,3 +33,7 @@ VM 以外の環境で root として実行しないでください。preflight �
 ## M3 接続制御
 
 ホストから `./scripts/test-policy-vm.sh` を実行します。共通ビルド成果物と `connect_policy.py` / `connect_monitor.py` を専用VMへ転送し、rootでloopback合成TCP試験を行います。M3の両フックは専用sliceだけへattachし、管理SSHと既存systemd BPFは保持します。root以外の制御拒否、容量超過、既存接続、mapped IPv6、ログ欠落と終了後復帰も確認します。JSONは `artifacts/m3` に保存します。
+
+## M4 TUI
+
+`./scripts/test-tui-vm.sh` はLinuxテストバイナリと通常CLIを専用VMへ転送し、PTYを使って実キー操作・リサイズ・更新失敗・端末復元・リンク解除を確認します。描画失敗fixtureはPTY内で `--ignored --exact` により明示実行し、1件実行されたことも確認します。JSONと画面のテキストsnapshotをartifacts/m4に残します。ANSI解析は試験で使うsubsetに限定し、一般的なterminal emulatorとして提供しません。
