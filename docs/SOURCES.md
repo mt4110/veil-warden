@@ -49,3 +49,11 @@
 - [bpf-linker 0.9.15](https://github.com/aya-rs/bpf-linker/blob/v0.9.15/Cargo.toml)：LLVM 21の対応を確認し、LLVM 21のnightlyを選択。
 - [固定Aya template](https://github.com/aya-rs/aya-template/tree/c0fd79891b5ac8f73c1092bc2a374268d0548c7c)：依存版・workspaceの参考。generatorは実行せず最小構成を作成。
 - [Linux 6.18 cgroup BPF](https://github.com/torvalds/linux/blob/v6.18/kernel/bpf/cgroup.c)：cgroup_skb送信時の戻り値1は許可。
+
+## M2 採用APIの一次資料
+
+- [Aya 0.14 CgroupSockAddr](https://github.com/aya-rs/aya/blob/aya-v0.14.0/aya/src/programs/cgroup_sock_addr.rs)：両connect hookのload/attachとFD link。
+- [aya-ebpf 0.2.1 SockAddrContext](https://github.com/aya-rs/aya/blob/aya-ebpf-v0.2.1/ebpf/aya-ebpf/src/programs/sock_addr.rs)：便利getterを仮定せず、公開context pointerのfieldを参照。
+- [aya-ebpf RingBuf](https://github.com/aya-rs/aya/blob/aya-ebpf-v0.2.1/ebpf/aya-ebpf/src/maps/ring_buf.rs)：reserve/write/submitと予約失敗。
+- [Aya RingBuf](https://github.com/aya-rs/aya/blob/aya-v0.14.0/aya/src/maps/ring_buf.rs)：nextとAsyncFd readinessの組合せ。
+- [Tokio 1.53.1 AsyncFd](https://github.com/tokio-rs/tokio/blob/tokio-1.53.1/tokio/src/io/async_fd.rs)：所有、readable_mut、readinessをclearする条件。

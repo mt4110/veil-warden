@@ -1,6 +1,6 @@
 # 貢献ガイド
 
-まず [開発ガイドライン](docs/GUIDELINES.md) と [安全性文書](docs/SAFETY.md) を読んでください。現在はM0の環境とM1の観測専用counterを対象にしています。
+まず [開発ガイドライン](docs/GUIDELINES.md) と [安全性文書](docs/SAFETY.md) を読んでください。現在はM0の環境とM1/M2の観測専用コードを対象にしています。
 
 ## 変更前
 

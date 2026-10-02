@@ -22,5 +22,6 @@ ssh "${options[@]}" -p 32222 builder@127.0.0.1 \
   "set -eu; mkdir -p '$remote'; tar -xzf 'm1-source-$revision.tar.gz' -C '$remote'; cd '$remote'; ./scripts/build-counter.sh"
 scp "${options[@]}" -P 32222 "builder@127.0.0.1:$remote/target/release/veil-warden" "$destination/"
 scp "${options[@]}" -P 32222 "builder@127.0.0.1:$remote/target/bpfel-unknown-none/release/veil-warden-ebpf" "$destination/"
+scp "${options[@]}" -P 32222 "builder@127.0.0.1:$remote/target/bpfel-unknown-none/release/veil-warden-partial-fixture" "$destination/"
 printf '%s\n' "$destination" > "$state/m1/build-path"
 printf 'M1 artifacts: %s\n' "$destination"

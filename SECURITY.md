@@ -1,6 +1,6 @@
 # セキュリティ方針
 
-veil-warden は自分の Linux VM で合成通信を観測・制御する研究用ツールです。現在はM1まで完了していますが、利用者の通信を保護する製品として提供していません。
+veil-warden は自分の Linux VM で合成通信を観測・制御する研究用ツールです。現在はM2まで完了していますが、利用者の通信を保護する製品として提供していません。
 
 ## 対象と脅威モデル
 
@@ -38,3 +38,7 @@ veil-warden は自分の Linux VM で合成通信を観測・制御する研究�
 ## M1 の境界
 
 M1は専用VMの固定cgroupに観測専用BPFを明示的にattachします。通常終了・SIGTERM・SIGKILLで解除されるFD linkを使い、payloadやプロセス情報を収集しません。自作programは常に許可を返し、既存firewallを解除しません。任意objectの安全性やroot管理者に対する保護は保証しません。詳細と実測は [M1](milestones/01-packet-counter/README.md) と [安全性文書](docs/SAFETY.md) を参照してください。
+
+## M2 の境界
+
+M2はTCP接続試行のメタデータと限定したcommを表示します。argv/environ/payloadを読みません。名前はbest effortで、接続成功や通信の安全性を判定しません。欠落を表示し、有界queueと読取上限を維持します。部分起動失敗と3種類の終了時解除を実VMで確認しています。

@@ -55,3 +55,13 @@ VM 内でも、root 権限、cgroup 外の処理、既存・受け渡された s
 これはcgroupに属するソケットの送信SKBを数える観測器です。継承・受け渡しされたソケット、対象cgroupへ移動する前に作ったソケット、offloadによる分割・統合を考慮すると、アプリのsend回数や物理パケット数とは一致しません。per-CPU値の読み出しも全CPU同時のsnapshotではありません。負荷下の厳密な計数・性能保証はM1の試験範囲外です。
 
 systemd自身のBPF programと共存し、既存の制御条件を変更しません。M1自身が許可を返しても、他のBPFやファイアウォールの拒否が解除されるわけではありません。hostname確認や固定scopeだけで他のLinuxホストでの利用が安全になるとは扱いません。
+
+## M2 の情報取得と欠落
+
+M2はconnect4/connect6でTCP接続試行の宛先、TGID/TID、cgroup ID、単調時刻を取得します。フックは常に許可を返し、payloadやargv/environを読みません。IPv4/IPv6で同じ56 byte ABIを使い、paddingがないことと全fieldの初期化を確認します。受信側はunsafe castを使わず、長さ・版・値を検証してからコピーします。
+
+プロセス名は表示workerが `/proc/PID/comm` だけを最大64 byte読み、制御文字除去・32文字制限を適用します。PID再利用や終了との競合があるためbest effort情報です。名前不明を通信の安全性やイベントの無効性とは扱いません。
+
+RingBufは16 KiB、表示queueは128件、表示workerは1つです。キュー満杯時は欠落を計数し、無制限の履歴・cacheを作りません。RingBuf予約失敗も別に計数します。メタデータ観測の欠落は通信を拒否する理由にせず、欠落したイベントを安全とも判定しません。短時間の負荷試験とRSSは [M2記録](../milestones/02-connect-monitor/README.md) に記載し、長時間・実運用の保証とは区別します。
+
+FD linkを2つ保持し、両方の起動成功後だけreadyを表示します。片方の失敗・受信/表示失敗では取得済みlinkを解放します。SIGKILLでは終了summaryが失われてもリンクはkernelのFD解放で解除されます。M1とM2でロックを分け、同じモードの二重起動を拒否します。

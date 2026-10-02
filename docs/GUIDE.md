@@ -101,3 +101,31 @@ sudo /home/warden/warden-m1-日時-PID/veil-warden \
 Linuxでソースからビルドする場合は `./scripts/build-counter.sh` を使います。BPFオブジェクトは `target/bpfel-unknown-none/release/veil-warden-ebpf`、CLIは `target/release/veil-warden` です。自分でビルドしたオブジェクトだけをロードしてください。任意のオブジェクトの安全性をCLIが証明する機能はありません。
 
 起動時の読み込み・Map・attach失敗はエラー終了します。既存のsystemdファイアウォールと共存するcgroup BPF linkを使い、既存programを上書き・解除しません。`/run/veil-warden-counter.lock` のFDロックで同じCLIの二重起動を拒否します。ロックファイルが存在していても、終了後はFDロックが解放されて再起動できます。
+
+## M2 接続監視の実行
+
+M1と同じ構築用・専用VMを起動し、ホストのリポジトリで実行します。
+
+```sh
+./scripts/build-counter-vm.sh
+./scripts/test-connect-vm.sh
+```
+
+共通ビルドは通常のBPF/CLIに加えて、connect6を欠く部分起動試験専用fixtureを構築します。fixtureを通常の監視用に使わないでください。受け入れ試験は専用VMの `warden-m2-日時-PID` に成果物をコピーし、合成loopback通信だけを使います。JSONは `artifacts/m2/acceptance-日時-PID.json` に保持します。
+
+手動でCLIを使う場合、VM内の転送先パスを指定します。
+
+```sh
+sudo systemctl start warden-test.slice
+sudo /home/warden/warden-m2-日時-PID/veil-warden connect \
+  --object /home/warden/warden-m2-日時-PID/veil-warden-ebpf \
+  --interval-ms 1000 --duration-ms 10000
+```
+
+`--duration-ms 0`（既定）はSIGINT/SIGTERMまで継続します。`--samples` はM1専用です。診断用 `--reader-delay-ms 0..1000` はRingBuf受信を遅らせ、欠落試験に使います。通常は0のまま使ってください。
+
+出力の `attempt` は接続試行、`decision=allow` はこのフックの判断、`connection_result=unknown` は実際の接続結果を取得していないことを意味します。拒否された接続も記録されます。`comm_status=best_effort` は現在のprocから読んだ名前、`unavailable`/`invalid` は未取得状態です。名前が不明でもイベントを継続します。
+
+`stats` はattempted、emitted、ring_dropped、decoded、decode_errors、queue_dropped、displayedを分けて表示します。RingBuf予約失敗でも通信を許可し、表示キュー満杯でも受信を止めません。表示workerが終了した場合はエラー終了してリンクを解放します。最終statsは通常終了・SIGTERMで表示し、SIGKILLでは出ません。
+
+片方のフックで失敗したらCLIはready表示をせず終了し、取得済みFD linkを解放します。終了時は両リンクを解除してから残りのイベントを処理します。stdoutが詰まると最終表示・終了待ちが遅れることがあります。SIGKILLでもkernelがFDを閉じるため、自作のアタッチは残りません。

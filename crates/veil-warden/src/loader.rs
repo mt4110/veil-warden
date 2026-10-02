@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-use crate::cli::Options;
+use crate::cli::{Mode, Options};
 use aya::{
     Ebpf,
     maps::PerCpuArray,
@@ -19,7 +19,7 @@ const SCOPE: &str = "/sys/fs/cgroup/warden.slice/warden-test.slice";
 
 pub fn run(options: Options) -> Result<(), Box<dyn std::error::Error>> {
     if fs::read_to_string("/etc/hostname")?.trim() != "veil-warden-sandbox" {
-        return Err("M1 loader is restricted to the dedicated veil-warden-sandbox VM".into());
+        return Err("loader is restricted to the dedicated veil-warden-sandbox VM".into());
     }
     let release = fs::read_to_string("/proc/sys/kernel/osrelease")?;
     let mut parts = release.trim().split('.');
@@ -27,8 +27,14 @@ pub fn run(options: Options) -> Result<(), Box<dyn std::error::Error>> {
         parts.next().ok_or("kernel major missing")?.parse::<u32>()?,
         parts.next().ok_or("kernel minor missing")?.parse::<u32>()?,
     );
-    if version < (5, 7) {
-        return Err("FD-owned cgroup links require Linux >= 5.7".into());
+    if version
+        < if options.mode == Mode::Connect {
+            (5, 8)
+        } else {
+            (5, 7)
+        }
+    {
+        return Err("counter requires Linux >=5.7; connect RingBuf requires >=5.8".into());
     }
     if fs::canonicalize(SCOPE)? != std::path::Path::new(SCOPE) {
         return Err("test cgroup must not be a symlink".into());
@@ -37,7 +43,10 @@ pub fn run(options: Options) -> Result<(), Box<dyn std::error::Error>> {
     let stop = Arc::new(AtomicBool::new(false));
     let int = signal_hook::flag::register(signal_hook::consts::SIGINT, stop.clone())?;
     let term = signal_hook::flag::register(signal_hook::consts::SIGTERM, stop.clone())?;
-    let result = observe(options, &stop);
+    let result = match options.mode {
+        Mode::Counter => observe(options, &stop),
+        Mode::Connect => crate::events::run(options, &stop),
+    };
     signal_hook::low_level::unregister(int);
     signal_hook::low_level::unregister(term);
     result

@@ -36,7 +36,7 @@ M2/M3 の保証対象は TCP の新規接続に限定する。非 TCP イベン�
 
 呼出しスレッドの ID は、ソケットを実質的に所有するアプリケーションの ID と常に同じとは限らない。PID namespace、プロセス終了、PID 再利用を考慮し、/proc から名前を取得できなくてもイベント自体を失敗扱いにしない。
 
-## イベント ABI の提案
+## イベント ABI（M2で実装済み）
 
 common クレートは no_std。固定幅の整数・バイト配列と repr(C) で共有する。接続イベントは PacketLog ではなく ConnectEvent と呼ぶ。
 
@@ -56,15 +56,15 @@ common クレートは no_std。固定幅の整数・バイト配列と repr(C) 
 | 12 | policy_id | u32 | 拒否ルールの ID、該当なしはゼロ |
 | 13 | reserved | u32 | 必ずゼロ |
 
-この並びの想定サイズは 56 byte、alignment は 8 byte。実装でサイズ・alignment・offset を検査し、implicit padding がないことと全フィールド初期化を確認する。repr(C) だけで正しい初期化や有効なデコードを保証しない。ABI を変更したら版を変える。
+この並びのサイズは 56 byte、alignment は 8 byte。M2では両コンパイラでサイズ・alignment・offsetを検査し、implicit padding がないことと全フィールド初期化を確認する。repr(C) だけで正しい初期化や有効なデコードを保証しない。ABI を変更したら版を変える。
 
-IP はネットワーク順の byte 配列として格納し、ポートは境界で一度だけ変換する。受信は長さ・版・family・action を検証してから値をコピーする。短いデータを無条件に read_unaligned しない。Pod の unsafe 実装は対象型の契約を確認した場合だけ使う。未知版/不正データはデコードエラーとして計数し、安全な通信とは判定しない。
+IPはnetwork octetで格納し、portはkernelで一度だけhost-valued整数へ変換する。ABI v1の整数bytesはlittle endian（固定BPF targetはbpfel）とする。受信は長さ・版・family・action を検証してから値をコピーする。短いデータを無条件に read_unaligned しない。Pod の unsafe 実装は対象型の契約を確認した場合だけ使う。未知版/不正データはデコードエラーとして計数し、安全な通信とは判定しない。
 
 ## Map と所有
 
 - COUNTERS: M1 の per-CPU カウンタ。累積値を集計する。
-- EVENTS: RingBuf。Tokio AsyncFd による readiness と next による drain を用いる予定。実装時の Aya 版で API を確認する。
-- STATS: 発行数、RingBuf 予約失敗数、拒否数を計数。ログ欠落と判断結果を分ける。
+- EVENTS: RingBuf。M2でTokio AsyncFdのreadinessとnextによるdrainを実装。16 KiB固定。空まで読む場合だけreadyをclearし、128件ごとにyieldする。
+- STATS: M2ではTCP試行数、発行数、RingBuf予約失敗数をper-CPUで計数。拒否数はM3以降。
 - DENY_DESTINATIONS: M3 の宛先 Map。対象 cgroup 専用の Map とし、family・アドレス・port・protocol で一致判定する。IP だけの自動登録はしない。
 
 ユーザー側の loader が Ebpf、Map、link を所有する。長寿命タスクへ渡す Map は take_map 等で所有可能な形にする。&mut Ebpf から借りた Map をそのまま static な非同期タスクへ持ち込まない。イベント受信とポリシー更新の責務を分ける。
@@ -73,7 +73,7 @@ M3 の操作は単一ルールの追加/解除まで。bulk replacement や CIDR
 
 ## 負荷と失敗時
 
-RingBuf 満杯でも接続判断を待たせない。事前ルールに従って判断し、イベント送信失敗を別に計数する。UI へのチャンネル、履歴、プロセス名キャッシュを有界にし、欠落数を表示する。/proc 読み取りと M5 スキャンで受信ループを止めない。
+RingBuf 満杯でも接続判断を待たせない。事前ルールに従って判断し、イベント送信失敗を別に計数する。M2は表示queue128件、単一表示worker、履歴/名前cacheなしとし、欠落数を表示する。/proc 読み取りと M5 スキャンで受信ループを止めない。
 
 初期モードは observe。enforce は明示指定し、検証済みルールを両 family 用のフックへ準備してから対象クライアントを開始する。片方の attach 失敗時は起動を失敗として扱い、取得したリンクを解放する。
 
@@ -91,8 +91,8 @@ M5 は専用テスト cgroup の argv を明示的に選んだ場合のみ評価
 
 NixOS のサービスは M6 で実装し、初期は無効・observe。CLI/daemon は同じイベント処理を利用するが、daemon で端末初期化を行わない。root は VM 内の初期検証で必要な範囲に限り、常駐時の capability とファイル権限は実カーネルで確認する。memlock と memcg の条件を診断し、無条件に LimitMEMLOCK=infinity を必須としない。
 
-## M0 の実装状況
+## 実装状況
 
 M0 の VM 設定と Rust のアーキテクチャガードを実装しました。専用 slice の実パスは `/warden.slice/warden-test.slice` です。環境はルートの flake/lock で固定し、専用 VM の root は一時的なメモリ領域、共有は公開鍵ディレクトリだけに限定しています。
 
-イベント ABI、Map、非同期受信、通信拒否の節は M1 以降の設計であり、実装済みとは扱いません。実測結果は [M0](../milestones/00-sandbox/README.md)、安全性の説明は [安全性文書](SAFETY.md) を参照してください。
+M1のcounterとM2のConnectEvent ABI、RingBuf、非同期受信は実装済みです。通信拒否・ルールMap・TUI・secret scanは以降の設計です。M2でも正常終了・SIGTERM・SIGKILLと部分起動失敗のリンク解放を実測しています。実測結果は [M0](../milestones/00-sandbox/README.md)、安全性の説明は [安全性文書](SAFETY.md) を参照してください。

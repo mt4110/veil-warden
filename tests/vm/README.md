@@ -23,3 +23,9 @@ VM 以外の環境で root として実行しないでください。preflight �
 `./scripts/build-counter-vm.sh` の後に `./scripts/test-counter-vm.sh` を実行します。`cases/packet_counter.py` は実際のAya CLIを起動し、固定合成UDPのIPv4/IPv6受信、counter増加、対象外隔離、終了後のlink消失を検証します。CLIのroot scope指定・ロード失敗・二重起動も拒否される必要があります。
 
 通常終了・SIGTERM・SIGKILLは別々に実attachして調べます。systemd自身のprogram IDは再生成で変わり得るため、ID以外の全attachment fieldと自作linkの消失を確認します。ローカルJSONは `artifacts/m1`、共有できる概要は [M1](../../milestones/01-packet-counter/README.md) に記載します。
+
+## M2 の受け入れ試験
+
+共通ビルド後に `./scripts/test-connect-vm.sh` を実行します。`cases/connect_monitor.py` はIPv4/IPv6成功と拒否TCP、対象外TCP、connected UDP、PID/TID/cgroup・宛先の一致を検証します。診断用の受信遅延でRingBufを満杯にし、欠落・最終計数・短命プロセスの名前不明を確認します。
+
+通常終了・SIGTERM・SIGKILLの2リンク解除に加え、connect6を欠くfixtureの部分起動失敗も試します。ローカルJSONは `artifacts/m2`、概要は [M2](../../milestones/02-connect-monitor/README.md) に記載します。

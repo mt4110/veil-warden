@@ -10,3 +10,4 @@ veil-warden-common = { path = "../veil-warden-common" }
 [target.'cfg(target_os = "linux")'.dependencies]
 aya = "=0.14.0"
 signal-hook = "=0.3.18"
+tokio = { version = "=1.53.1", features = ["rt", "net", "time", "sync", "macros"] }

@@ -315,12 +315,12 @@ fn loader_guard_rejects_cross_platform_declarations() {
 }
 
 // This is a source boundary guard, not a replacement for verifier/runtime tests.
-fn counter_always_allows(source: &str) -> bool {
+fn function_always_allows(source: &str, name: &str) -> bool {
     let Ok(file) = syn::parse_file(source) else {
         return false;
     };
     let Some(function) = file.items.iter().find_map(|item| match item {
-        syn::Item::Fn(f) if f.sig.ident == "count_egress" => Some(f),
+        syn::Item::Fn(f) if f.sig.ident == name => Some(f),
         _ => None,
     }) else {
         return false;
@@ -346,7 +346,7 @@ fn counter_always_allows(source: &str) -> bool {
 #[test]
 fn m1_counter_has_an_unconditional_allow_tail() {
     let source = fs::read_to_string(root().join("crates/veil-warden-ebpf/src/counter.rs")).unwrap();
-    assert!(counter_always_allows(&source));
+    assert!(function_always_allows(&source, "count_egress"));
     for unsafe_return in [
         "0",
         "return 0; ALLOW",
@@ -354,13 +354,46 @@ fn m1_counter_has_an_unconditional_allow_tail() {
         "panic!(); ALLOW",
         "foo()?; ALLOW",
     ] {
-        assert!(!counter_always_allows(&format!(
-            "fn count_egress() -> i32 {{ {unsafe_return} }}"
-        )));
+        assert!(!function_always_allows(
+            &format!("fn count_egress() -> i32 {{ {unsafe_return} }}"),
+            "count_egress"
+        ));
     }
     let common = syn::parse_file(
         &fs::read_to_string(root().join("crates/veil-warden-common/src/lib.rs")).unwrap(),
     )
     .unwrap();
     assert!(common.items.iter().any(|item| matches!(item, syn::Item::Const(c) if c.ident == "ALLOW" && matches!(&*c.expr, syn::Expr::Lit(l) if matches!(&l.lit, syn::Lit::Int(v) if v.base10_parse::<i32>().ok() == Some(1))))));
+}
+
+#[test]
+fn m2_hooks_are_observe_only_and_user_metadata_reads_are_scoped() {
+    let source = fs::read_to_string(root().join("crates/veil-warden-ebpf/src/connect.rs")).unwrap();
+    for name in ["monitor_connect4", "monitor_connect6"] {
+        assert!(function_always_allows(&source, name));
+    }
+    // Literal proc reads are limited to comm; expand this reviewed set deliberately.
+    struct ProcPaths(Vec<String>);
+    impl<'ast> Visit<'ast> for ProcPaths {
+        fn visit_lit_str(&mut self, node: &'ast syn::LitStr) {
+            if node.value().contains("/proc/") {
+                self.0.push(node.value());
+            }
+            visit::visit_lit_str(self, node);
+        }
+    }
+    let mut paths = Vec::new();
+    rust_sources(&root().join("crates/veil-warden/src"), &mut paths);
+    for path in paths {
+        let f = syn::parse_file(&fs::read_to_string(&path).unwrap()).unwrap();
+        let mut literals = ProcPaths(Vec::new());
+        literals.visit_file(&f);
+        for literal in literals.0 {
+            assert!(
+                ["/proc/{pid}/comm", "/proc/sys/kernel/osrelease"].contains(&literal.as_str()),
+                "unexpected proc read in {}: {literal}",
+                path.display()
+            );
+        }
+    }
 }
