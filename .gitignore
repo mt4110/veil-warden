@@ -1,0 +1,10 @@
+/target/
+/artifacts/
+/result
+/result-*
+*.qcow2
+*.raw
+*.img
+.DS_Store
+__pycache__/
+*.pyc

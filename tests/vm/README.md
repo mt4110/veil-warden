@@ -1,0 +1,19 @@
+# veil-warden VM 検証
+
+M0 は `warden-preflight` で環境と通信範囲を実測します。構築・起動・停止の手順は [実行ガイド](../../docs/GUIDE.md) を参照してください。
+
+## M0 の合格条件
+
+- ARM64 Linux、cgroup v2、BTF が利用可能。
+- cgroup_skb、cgroup_sock_addr、RingBuf、HashMap、per-CPU Array の feature probe が成功。
+- SSH は専用 slice の外にあり、合成クライアントは slice に入ってから socket を作る。
+- IPv4/IPv6 loopback の受信サーバーが固定した合成文字列を受信。
+- 同じイメージで再起動したとき、ゲストの一時変更が消え、同じ試験が成功。
+
+BPF link の列挙ができることは確認しますが、自作プログラムの cgroup attach は M1 の実試験です。既存の kernel/system service が作った BPF link と自作の link を混同しません。
+
+## 記録
+
+ローカルの `artifacts/m0` に Nix 設定の版、preflight の JSON、boot ID と slice の資源制限を記録します。Git には非機密の結果概要を [M0](../../milestones/00-sandbox/README.md) に残します。
+
+VM 以外の環境で root として実行しないでください。preflight は root の feature probe と専用 systemd unit を使います。実秘密・外部 IP・payload を試験へ追加しません。

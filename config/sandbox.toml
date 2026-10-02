@@ -1,0 +1,14 @@
+# Single source of truth consumed by Nix and the architecture guards.
+[m0]
+mode = "observe"
+attach_enabled = false
+scope = "/warden.slice/warden-test.slice"
+ssh_bind = "127.0.0.1"
+ssh_port = 32223
+cpus = 2
+memory_mib = 4096
+
+[bootstrap]
+cpus = 2
+memory_mib = 4096
+disk_mib = 32768

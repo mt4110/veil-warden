@@ -1,0 +1,6 @@
+# Workspace edges only. External dependency review remains required.
+[layers]
+veil-warden-common = []
+veil-warden-ebpf = ["veil-warden-common"]
+veil-warden = ["veil-warden-common"]
+architecture-guard = []
