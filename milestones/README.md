@@ -7,7 +7,7 @@
 | M0 | [サンドボックス](00-sandbox/README.md) | 完了、VM実測済み |
 | M1 | [パケットカウンタ](01-packet-counter/README.md) | 完了、VM実測済み |
 | M2 | [接続監視](02-connect-monitor/README.md) | 完了、VM実測済み |
-| M3 | [接続拒否と解除](03-connect-policy/README.md) | 未着手 |
+| M3 | [接続拒否と解除](03-connect-policy/README.md) | 完了、VM実測済み |
 | M4 | [TUI](04-tui/README.md) | 未着手 |
 | M5 | [シークレット警告](05-secret-warning/README.md) | 未着手 |
 | M6 | [サービス化](06-service/README.md) | 未着手 |

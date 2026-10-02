@@ -126,6 +126,44 @@ sudo /home/warden/warden-m2-日時-PID/veil-warden connect \
 
 出力の `attempt` は接続試行、`decision=allow` はこのフックの判断、`connection_result=unknown` は実際の接続結果を取得していないことを意味します。拒否された接続も記録されます。`comm_status=best_effort` は現在のprocから読んだ名前、`unavailable`/`invalid` は未取得状態です。名前が不明でもイベントを継続します。
 
-`stats` はattempted、emitted、ring_dropped、decoded、decode_errors、queue_dropped、displayedを分けて表示します。RingBuf予約失敗でも通信を許可し、表示キュー満杯でも受信を止めません。表示workerが終了した場合はエラー終了してリンクを解放します。最終statsは通常終了・SIGTERMで表示し、SIGKILLでは出ません。
+`stats` はattempted、emitted、ring_dropped、decoded、decode_errors、queue_dropped、displayedを分けて表示します。監視モードではRingBuf予約失敗でも通信を許可し、表示キュー満杯でも受信を止めません。表示workerが終了した場合はエラー終了してリンクを解放します。最終statsは通常終了・SIGTERMで表示し、SIGKILLでは出ません。
 
 片方のフックで失敗したらCLIはready表示をせず終了し、取得済みFD linkを解放します。終了時は両リンクを解除してから残りのイベントを処理します。stdoutが詰まると最終表示・終了待ちが遅れることがあります。SIGKILLでもkernelがFDを閉じるため、自作のアタッチは残りません。
+
+## M3 接続拒否と解除の実行
+
+M1/M2と同じ構築用・専用VMを起動し、ホストで実行します。
+
+```sh
+./scripts/build-counter-vm.sh
+./scripts/test-policy-vm.sh
+```
+
+JSONは `artifacts/m3/acceptance-日時-PID.json` に保持します。合成loopbackだけを使い、IPv4/IPv6拒否、解除、対象外通信、容量超過、既存接続、部分起動と終了後の復帰を検査します。
+
+手動操作は、転送されたバイナリとobjectの実パスに置き換え、専用VM内で行います。
+
+```sh
+sudo systemctl start warden-test.slice
+sudo /home/warden/warden-m3-日時-PID/veil-warden connect \
+  --object /home/warden/warden-m3-日時-PID/veil-warden-ebpf \
+  --enforce --deny 127.0.0.1 8443
+```
+
+`attached ... links=2 ... policy_mode=enforce` が出るまで対象クライアントを起動しません。これは両フックの準備完了です。`--enforce` を省くと監視のみで、`--deny` や稼働中のルール追加は拒否されます。`--enforce` 単独ではルールがゼロで、すべて許可します。起動前に一つのルールを設定する `--deny IP PORT` は一回だけ指定できます。
+
+別のVMシェルで同じバイナリを使います。
+
+```sh
+sudo /home/warden/warden-m3-日時-PID/veil-warden policy list
+sudo /home/warden/warden-m3-日時-PID/veil-warden policy add ::1 8443
+sudo /home/warden/warden-m3-日時-PID/veil-warden policy remove ::1 8443
+```
+
+ルールはIPリテラルと1..65535のportで指定し、TCPだけに適用します。DNS名、CIDR、port範囲は使えません。IPv4-mapped IPv6のルールはIPv4へ正規化します。最大16件で、重複追加、存在しないルールの解除、容量超過は非ゼロ終了と `error` 応答になります。応答の `mode`・`rules`・一覧が現在のMap状態です。成功応答の後に開始する新規接続で結果を確認し、更新と同時進行のconnectを厳密に順序付けたとは扱いません。
+
+拒否イベントは `decision=deny policy_id=非ゼロ`、許可は `decision=allow policy_id=0` です。クライアントの拒否errnoは固定カーネルで `EPERM`（1）でした。`connection_result=unknown` は実接続結果を追跡していない意味のままです。`stats` に `denied` を追加し、ログ欠落と独立して拒否数を計数します。
+
+通信復帰は `policy remove`、または監視プロセスの通常終了・SIGTERMで行えます。SIGKILLでもkernelがFDを解放し、自作linkと制御endpointは残りません。ルールは永続化せず、再起動時は再登録します。既存接続はルール追加後も継続するため、すべての通信を停止する用途には使えません。UDP/QUICや秘密のスキャンも対象外です。
+
+制御socketはabstract Unix socketでファイルを作らず、root以外の要求に応答しません。コマンド側も接続相手のUID 0を確認し、非rootの偽サーバーを拒否します。要求は256 byte、通信は2秒で打ち切ります。制御要求の処理中はログ受信が遅れ得ますが、kernelの拒否判断は待ちません。接続先が応答しない場合やCLIが停止した場合は制御コマンドも非ゼロで終了します。応答喪失時に操作結果を推測せず、`policy list` で状態を再確認してください。

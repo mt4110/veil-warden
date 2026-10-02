@@ -52,9 +52,9 @@ time.sleep(float(linger))
 '''
 
 class Monitor:
-    def __init__(self,binary,obj,duration=0,delay=0):
+    def __init__(self,binary,obj,duration=0,delay=0,extra=()):
         self.before=links(); self.baseline=attached(); self.lines=[]
-        self.process=subprocess.Popen([binary,'connect','--object',obj,'--interval-ms','100','--duration-ms',str(duration),'--reader-delay-ms',str(delay)], text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        self.process=subprocess.Popen([binary,'connect','--object',obj,'--interval-ms','100','--duration-ms',str(duration),'--reader-delay-ms',str(delay)]+list(extra), text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         self.reader=threading.Thread(target=self.read,daemon=True); self.reader.start()
         self.wait(lambda: any(x.startswith('attached ') for x in self.lines))
         self.live=links(); self.new={x['id'] for x in self.live}-{x['id'] for x in self.before}
@@ -82,7 +82,10 @@ class Monitor:
         return code
     def cleanup(self):
         if self.process.poll() is None:
-            self.process.terminate();self.process.wait(timeout=5)
+            self.process.terminate()
+            try:self.process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.process.kill();self.process.wait(timeout=5)
 
 serial=0
 

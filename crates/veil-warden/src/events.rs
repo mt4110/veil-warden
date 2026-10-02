@@ -6,7 +6,7 @@ use crate::{
 };
 use aya::{
     Ebpf,
-    maps::{MapData, PerCpuArray, RingBuf},
+    maps::{Array, HashMap, MapData, PerCpuArray, RingBuf},
     programs::{CgroupAttachMode, CgroupSockAddr, links::FdLink},
 };
 use std::{
@@ -16,7 +16,7 @@ use std::{
     time::{Duration, Instant},
 };
 use tokio::{io::unix::AsyncFd, sync::mpsc};
-use veil_warden_common::{STAT_ATTEMPTS, STAT_EMITTED, STAT_RING_DROPPED};
+use veil_warden_common::{ENFORCE, STAT_ATTEMPTS, STAT_DENIED, STAT_EMITTED, STAT_RING_DROPPED};
 type Error = Box<dyn std::error::Error>;
 type StatsMap = PerCpuArray<MapData, u64>;
 
@@ -42,6 +42,7 @@ fn snapshot(map: &StatsMap, mut s: Snapshot) -> Result<Snapshot, Error> {
         Ok(map.get(&index, 0)?.iter().map(|v| u128::from(*v)).sum())
     };
     s.attempted = sum(STAT_ATTEMPTS)?;
+    s.denied = sum(STAT_DENIED)?;
     s.emitted = sum(STAT_EMITTED)?;
     s.ring_dropped = sum(STAT_RING_DROPPED)?;
     Ok(s)
@@ -89,6 +90,14 @@ async fn observe(options: Options, stop: &AtomicBool) -> Result<(), Error> {
     let stats_map = StatsMap::try_from(bpf.take_map("STATS").ok_or("STATS missing")?)?;
     let ring = RingBuf::try_from(bpf.take_map("EVENTS").ok_or("EVENTS missing")?)?;
     let mut ring = AsyncFd::new(ring)?;
+    let mut mode = Array::<_, u32>::try_from(bpf.take_map("MODE").ok_or("MODE missing")?)?;
+    let rules = HashMap::try_from(
+        bpf.take_map("DENY_DESTINATIONS")
+            .ok_or("DENY_DESTINATIONS missing")?,
+    )?;
+    let mut policy =
+        crate::policy::control::Controller::new(rules, options.enforce, options.initial_rule)?;
+    mode.set(0, if options.enforce { ENFORCE } else { 0 }, 0)?;
     let link4 = attach(&mut bpf, &cgroup, "monitor_connect4")?;
     let link6 = attach(&mut bpf, &cgroup, "monitor_connect6")?;
     let (tx, rx) = mpsc::channel(QUEUE_CAPACITY);
@@ -96,13 +105,14 @@ async fn observe(options: Options, stop: &AtomicBool) -> Result<(), Error> {
         .name("connect-output".into())
         .spawn(move || output::worker(rx))?;
     let result = async {
-        writeln!(io::stdout(),"attached mode=connect scope=/warden.slice/warden-test.slice links=2 observation=attempt_only")?;
+        writeln!(io::stdout(),"attached mode=connect scope=/warden.slice/warden-test.slice links=2 observation=attempt_only policy_mode={}",if options.enforce {"enforce"}else{"observe"})?;
         io::stdout().flush()?;
         let start=Instant::now(); let mut last_stats=start;
         let mut tick=tokio::time::interval(Duration::from_millis(20));
         let mut stats=Snapshot::default();
         while !stop.load(Ordering::Relaxed) && (options.duration.is_zero() || start.elapsed()<options.duration) {
             tokio::select! {
+                accepted=policy.listener.accept()=>{let (stream,_)=accepted?;policy.serve(stream).await?;},
                 ready=ring.readable_mut() => {
                     let mut guard=ready?;
                     if !options.reader_delay.is_zero() { tokio::time::sleep(options.reader_delay).await; }

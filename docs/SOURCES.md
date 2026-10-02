@@ -57,3 +57,11 @@
 - [aya-ebpf RingBuf](https://github.com/aya-rs/aya/blob/aya-ebpf-v0.2.1/ebpf/aya-ebpf/src/maps/ring_buf.rs)：reserve/write/submitと予約失敗。
 - [Aya RingBuf](https://github.com/aya-rs/aya/blob/aya-v0.14.0/aya/src/maps/ring_buf.rs)：nextとAsyncFd readinessの組合せ。
 - [Tokio 1.53.1 AsyncFd](https://github.com/tokio-rs/tokio/blob/tokio-1.53.1/tokio/src/io/async_fd.rs)：所有、readable_mut、readinessをclearする条件。
+
+## M3 採用APIの一次資料
+
+- [Aya 0.14.0 HashMap実装](https://github.com/aya-rs/aya/blob/aya-v0.14.0/aya/src/maps/hash_map/hash_map.rs)：insertのflags、remove、実Mapのiterを確認。
+- [aya-ebpf 0.2.1 HashMap実装](https://github.com/aya-rs/aya/blob/aya-ebpf-v0.2.1/ebpf/aya-ebpf/src/maps/hash_map.rs)：lookup後の値を即座にコピーし、参照を保持しない。
+- [Linux v6.18 cgroup BPF実装](https://github.com/torvalds/linux/blob/v6.18/kernel/bpf/cgroup.c)：connectフックの拒否はEPERM、BPF linkのflags処理を確認。固定6.18.54の実VMでも拒否errnoとリンク解放を検証。
+
+abstract Unix socketとpeer credentialは固定Rust 1.95.0の標準APIおよびTokio 1.53.1を使用し、Linuxのコンパイルとroot/非rootの実行試験で確認します。

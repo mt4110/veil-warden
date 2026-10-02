@@ -4,7 +4,7 @@
 
 An experimental Rust and Aya project for observing network activity in a dedicated Linux VM and denying new connections using preconfigured rules. Only synthetic clients in the dedicated test cgroup are in scope.
 
-**M0, M1, and M2 are complete.** M1 counts egress SKBs. M2 reports TCP IPv4/IPv6 connection attempts, destinations, TGID/TID, and best-effort process names in the dedicated cgroup. Both permit traffic. No payloads, command arguments, or environment variables are collected. Enforcement remains unimplemented; M3 is the planned weekend completion point.
+**M0 through M3 are complete and verified in the dedicated NixOS VM.** M1 counts egress SKBs. M2 reports TCP IPv4/IPv6 connection attempts, destinations, TGID/TID, and best-effort process names. M3 denies new TCP connections matching explicit destination rules in the dedicated cgroup. Observe is the default. No payloads, command arguments, or environment variables are collected.
 
 ## Getting started
 
@@ -71,3 +71,14 @@ The detailed guides are currently in Japanese:
 - [Roadmap](docs/ROADMAP.md), [architecture](docs/ARCHITECTURE.md), and [M0 evidence](milestones/00-sandbox/README.md)
 
 Architecture guards verify repository boundaries and the M0 policy. They do not establish runtime enforcement correctness. VM verification is separate, and no first-send secret-leak prevention is claimed.
+
+## M3 connection policy
+
+```sh
+./scripts/build-counter-vm.sh
+./scripts/test-policy-vm.sh
+```
+
+Inside the dedicated VM, run `connect --enforce --deny IP PORT` with the object path to install a rule before attaching. As root, use `policy add IP PORT`, `policy remove IP PORT`, and `policy list` while it runs. Rules match address family, address, port, and TCP; IPv4-mapped IPv6 is normalized to IPv4. Capacity is 16 rules. Updates are not persistent and errors return a nonzero exit status with the current map state.
+
+VM acceptance covers IPv4/IPv6 denial and recovery, unaffected destinations and outside traffic, existing connections, capacity failure, partial attachment failure, and normal/SIGTERM/SIGKILL exits. All 4,096 attempts in the overload test were denied even with ring-buffer losses. This does not stop existing connections, inspect TLS, or prevent secret leaks. The monitor stops protecting new connections when it exits. See the [Japanese operation guide](docs/GUIDE.md#m3-接続拒否と解除の実行) and [M3 evidence](milestones/03-connect-policy/README.md).

@@ -35,8 +35,10 @@ pub fn decode(bytes: &[u8]) -> Result<ConnectEvent, DecodeError> {
     if !matches!(event.family, 4 | 6)
         || event.hook != event.family
         || event.protocol != TCP
-        || event.action != ACTION_ALLOWED
-        || event.policy_id != 0
+        || !matches!(
+            (event.action, event.policy_id),
+            (ACTION_ALLOWED, 0) | (ACTION_DENIED, 1..=u32::MAX)
+        )
         || event.reserved != 0
         || event.tgid == 0
         || event.tid == 0
@@ -58,7 +60,7 @@ mod tests {
         b[20..24].copy_from_slice(&101u32.to_le_bytes());
         b[24..28].copy_from_slice(&[127, 0, 0, 1]);
         b[40..42].copy_from_slice(&443u16.to_le_bytes());
-        b[42..44].copy_from_slice(&1u16.to_le_bytes());
+        b[42..44].copy_from_slice(&ABI_VERSION.to_le_bytes());
         b[44] = 4;
         b[45] = 6;
         b[47] = 4;
@@ -77,6 +79,16 @@ mod tests {
         assert!(decode(&v6).is_ok());
     }
     #[test]
+    fn deny_requires_rule_id() {
+        let mut b = fixture();
+        b[46] = ACTION_DENIED;
+        assert_eq!(decode(&b), Err(DecodeError::Value));
+        b[48..52].copy_from_slice(&7u32.to_le_bytes());
+        assert_eq!(decode(&b).unwrap().policy_id, 7);
+        b[46] = ACTION_ALLOWED;
+        assert_eq!(decode(&b), Err(DecodeError::Value));
+    }
+    #[test]
     fn invalid_records_are_rejected() {
         let b = fixture();
         for size in 0..56 {
@@ -84,7 +96,7 @@ mod tests {
         }
         assert_eq!(decode(&[0; 57]), Err(DecodeError::Length));
         for (offset, value) in [
-            (42, 2),
+            (42, 1),
             (44, 5),
             (45, 17),
             (46, 1),

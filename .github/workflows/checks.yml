@@ -18,5 +18,5 @@ jobs:
         run: nix develop "path:$PWD" --command ./scripts/check.sh
       - name: Build reproducible checks
         run: nix flake check "path:$PWD"
-      - name: Build M1 BPF object and Linux CLI
+      - name: Build M1-M3 BPF object and Linux CLI
         run: ./scripts/build-counter.sh

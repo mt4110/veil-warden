@@ -51,25 +51,26 @@ common クレートは no_std。固定幅の整数・バイト配列と repr(C) 
 | 7 | abi_version | u16 | 受信側が対応版を確認 |
 | 8 | family | u8 | 共有仕様の値 4/6、OS の AF 定数を流用しない |
 | 9 | protocol | u8 | IP protocol 番号 |
-| 10 | action | u8 | このフックで許可/拒否/対象外 |
+| 10 | action | u8 | 許可=0 / 拒否=1、非TCPはイベント対象外 |
 | 11 | hook | u8 | connect4/connect6 の区別 |
 | 12 | policy_id | u32 | 拒否ルールの ID、該当なしはゼロ |
 | 13 | reserved | u32 | 必ずゼロ |
 
 この並びのサイズは 56 byte、alignment は 8 byte。M2では両コンパイラでサイズ・alignment・offsetを検査し、implicit padding がないことと全フィールド初期化を確認する。repr(C) だけで正しい初期化や有効なデコードを保証しない。ABI を変更したら版を変える。
 
-IPはnetwork octetで格納し、portはkernelで一度だけhost-valued整数へ変換する。ABI v1の整数bytesはlittle endian（固定BPF targetはbpfel）とする。受信は長さ・版・family・action を検証してから値をコピーする。短いデータを無条件に read_unaligned しない。Pod の unsafe 実装は対象型の契約を確認した場合だけ使う。未知版/不正データはデコードエラーとして計数し、安全な通信とは判定しない。
+IPはnetwork octetで格納し、portはkernelで一度だけhost-valued整数へ変換する。ABI v2の整数bytesはlittle endian（固定BPF targetはbpfel）とする。受信は長さ・版・family・action を検証してから値をコピーする。短いデータを無条件に read_unaligned しない。Pod の unsafe 実装は対象型の契約を確認した場合だけ使う。未知版/不正データはデコードエラーとして計数し、安全な通信とは判定しない。
 
 ## Map と所有
 
 - COUNTERS: M1 の per-CPU カウンタ。累積値を集計する。
 - EVENTS: RingBuf。M2でTokio AsyncFdのreadinessとnextによるdrainを実装。16 KiB固定。空まで読む場合だけreadyをclearし、128件ごとにyieldする。
-- STATS: M2ではTCP試行数、発行数、RingBuf予約失敗数をper-CPUで計数。拒否数はM3以降。
-- DENY_DESTINATIONS: M3 の宛先 Map。対象 cgroup 専用の Map とし、family・アドレス・port・protocol で一致判定する。IP だけの自動登録はしない。
+- STATS: M2ではTCP試行数、発行数、RingBuf予約失敗数をper-CPUで計数。M3で拒否数を追加。
+- MODE: Arrayの1 slot、0=observe、1=enforce。ルールとmodeはattach前に準備する。
+- DENY_DESTINATIONS: 最大16件のHashMap。20 byteのキーと非ゼロu32のルールID。M3 の宛先 Map。対象 cgroup 専用の Map とし、family・アドレス・port・protocol で一致判定する。IP だけの自動登録はしない。
 
 ユーザー側の loader が Ebpf、Map、link を所有する。長寿命タスクへ渡す Map は take_map 等で所有可能な形にする。&mut Ebpf から借りた Map をそのまま static な非同期タスクへ持ち込まない。イベント受信とポリシー更新の責務を分ける。
 
-M3 の操作は単一ルールの追加/解除まで。bulk replacement や CIDR、永続化は後回し。更新失敗時は成功表示せず、現在の Map の状態を表示する。異なる family の表現は混ぜず、IPv4-mapped IPv6 の扱いもテストで固定する。
+M3 の操作は単一ルールの追加/解除まで。bulk replacement や CIDR、永続化は後回し。更新失敗時は成功表示せず、現在の Map の状態を表示する。IPv4-mapped IPv6はpolicyキーだけIPv4へ正規化し、イベントは実際のhook/family/addressを保持する。キーはaddress octets 16 byte、little-endian port 2 byte、family 1 byte、protocol 1 byte。隠れたpaddingやunsafe Podを使わない。
 
 ## 負荷と失敗時
 
@@ -95,4 +96,12 @@ NixOS のサービスは M6 で実装し、初期は無効・observe。CLI/daemo
 
 M0 の VM 設定と Rust のアーキテクチャガードを実装しました。専用 slice の実パスは `/warden.slice/warden-test.slice` です。環境はルートの flake/lock で固定し、専用 VM の root は一時的なメモリ領域、共有は公開鍵ディレクトリだけに限定しています。
 
-M1のcounterとM2のConnectEvent ABI、RingBuf、非同期受信は実装済みです。通信拒否・ルールMap・TUI・secret scanは以降の設計です。M2でも正常終了・SIGTERM・SIGKILLと部分起動失敗のリンク解放を実測しています。実測結果は [M0](../milestones/00-sandbox/README.md)、安全性の説明は [安全性文書](SAFETY.md) を参照してください。
+M1のcounterとM2のConnectEvent ABI、RingBuf、非同期受信は実装済みです。M3の通信拒否・ルールMap・root用制御ソケットも実装済みです。TUIとsecret scanは以降の設計です。M2でも正常終了・SIGTERM・SIGKILLと部分起動失敗のリンク解放を実測しています。実測結果は [M0](../milestones/00-sandbox/README.md)、安全性の説明は [安全性文書](SAFETY.md) を参照してください。
+
+## M3 制御経路と判断の順序
+
+CLIは `--enforce` を明示したときだけ拒否Mapを参照するモードに設定する。kernelは非TCPを許可し、TCPの宛先キーを作り、modeとルールIDを値としてコピーして判断する。拒否数を計数してからRingBufを予約するため、予約失敗でも同じ判定を返す。拒否イベントはaction=1かつpolicy_id非ゼロ、許可はaction=0かつpolicy_id=0。意味を拡張したためABI版を2へ更新し、旧版イベントを拒否する。
+
+ユーザー空間のcontrollerはMapを所有し、追加はBPF_NOEXISTで重複を拒否、解除は存在しないキーもエラーにする。Map操作の成功後だけ成功応答を返す。失敗時は原因と現在のMap一覧を返し、CLIは非ゼロで終了する。各操作は単一キーに限り、ルール集合全体のtransactionやconnectと更新の厳密な時刻順序は保証しない。
+
+制御はLinux abstract Unix socket `veil-warden-policy` を使う。ファイルを作成せず、pinもせず、プロセス終了でendpointを解放する。peer credentialのUID 0だけを受け付け、クライアントもサーバーのUID 0を確認する。要求は256 byte、応答は4096 byte以内、通信は2秒のサーバーtimeoutと3秒のクライアントtimeoutで制限する。処理は受信ループと直列なので、遅い制御要求はログ受信を最長2秒遅らせ得る。kernelの拒否判断は独立して継続する。

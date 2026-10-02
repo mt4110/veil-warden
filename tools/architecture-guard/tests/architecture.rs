@@ -367,10 +367,26 @@ fn m1_counter_has_an_unconditional_allow_tail() {
 }
 
 #[test]
-fn m2_hooks_are_observe_only_and_user_metadata_reads_are_scoped() {
+fn m3_hooks_share_scoped_policy_and_user_metadata_reads_are_scoped() {
     let source = fs::read_to_string(root().join("crates/veil-warden-ebpf/src/connect.rs")).unwrap();
     for name in ["monitor_connect4", "monitor_connect6"] {
-        assert!(function_always_allows(&source, name));
+        let file = syn::parse_file(&source).unwrap();
+        let function = file
+            .items
+            .iter()
+            .find_map(|item| match item {
+                syn::Item::Fn(f) if f.sig.ident == name => Some(f),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(
+            function.block.stmts.len(),
+            1,
+            "hooks must delegate to the shared policy decision"
+        );
+        assert!(
+            matches!(&function.block.stmts[0],syn::Stmt::Expr(syn::Expr::Call(call),None) if matches!(&*call.func,syn::Expr::Path(p) if p.path.is_ident("decide")))
+        );
     }
     // Literal proc reads are limited to comm; expand this reviewed set deliberately.
     struct ProcPaths(Vec<String>);

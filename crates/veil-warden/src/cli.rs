@@ -8,6 +8,8 @@ pub enum Mode {
 #[derive(Debug)]
 pub struct Options {
     pub object: PathBuf,
+    pub enforce: bool,
+    pub initial_rule: Option<veil_warden_common::RuleKey>,
     pub mode: Mode,
     pub duration: Duration,
     pub reader_delay: Duration,
@@ -20,6 +22,8 @@ pub fn parse(
 ) -> Result<Option<Options>, Box<dyn std::error::Error>> {
     let mut args = args;
     let mut object = None;
+    let mut enforce = false;
+    let mut initial_rule = None;
     let mut interval = 1000;
     let mut samples = 0;
     let mut mode = Mode::Counter;
@@ -27,6 +31,12 @@ pub fn parse(
     let mut reader_delay = 0;
     while let Some(arg) = args.next() {
         match arg.as_str() {
+            "--enforce" => enforce = true,
+            "--deny" if initial_rule.is_none() => {
+                let ip = args.next().ok_or("missing deny IP")?;
+                let port = args.next().ok_or("missing deny port")?;
+                initial_rule = Some(crate::policy::key(&ip, &port)?);
+            }
             "connect" if mode == Mode::Counter => mode = Mode::Connect,
             "--duration-ms" => duration = args.next().ok_or("missing duration")?.parse()?,
             "--reader-delay-ms" => {
@@ -34,7 +44,7 @@ pub fn parse(
             }
             "--help" | "-h" => {
                 println!(
-                    "veil-warden --object PATH [--interval-ms 10..60000] [--samples N]\nDefault: egress SKB counter. Add connect for TCP connect attempts (not connection success).\nconnect: [--duration-ms 0..600000] [--reader-delay-ms 0..1000 diagnostic]\nAlways allows traffic; fixed VM test slice."
+                    "veil-warden --object PATH [--interval-ms 10..60000] [--samples N]\nDefault: egress SKB counter. Add connect for TCP connect attempts (not connection success).\nconnect: [--duration-ms 0..600000] [--reader-delay-ms 0..1000 diagnostic]\nDefault observe; connect --enforce [--deny IP PORT].\nRuntime: policy list | add IP PORT | remove IP PORT; fixed VM test slice."
                 );
                 return Ok(None);
             }
@@ -55,7 +65,15 @@ pub fn parse(
     {
         return Err("--samples is for the counter; duration/delay are for connect".into());
     }
+    if (enforce || initial_rule.is_some()) && mode != Mode::Connect {
+        return Err("policy requires connect mode".into());
+    }
+    if initial_rule.is_some() && !enforce {
+        return Err("--deny requires --enforce".into());
+    }
     Ok(Some(Options {
+        enforce,
+        initial_rule,
         mode,
         duration: Duration::from_millis(duration),
         reader_delay: Duration::from_millis(reader_delay),
@@ -99,6 +117,23 @@ mod tests {
         ] {
             assert!(parse(args(s)).is_err());
         }
+    }
+    #[test]
+    fn enforcement_requires_explicit_connect_mode() {
+        for s in [
+            "--object bpf --enforce",
+            "connect --object bpf --deny 127.0.0.1 443",
+            "connect --object bpf --enforce --deny ::1 0",
+            "connect --object bpf --enforce --deny ::1 443 --deny ::1 444",
+        ] {
+            assert!(parse(args(s)).is_err(), "{s}");
+        }
+        let observed = parse(args("connect --object bpf")).unwrap().unwrap();
+        assert!(!observed.enforce && observed.initial_rule.is_none());
+        let enforced = parse(args("connect --object bpf --enforce --deny ::1 443"))
+            .unwrap()
+            .unwrap();
+        assert!(enforced.enforce && enforced.initial_rule.is_some());
     }
     #[test]
     fn finite_run_and_help() {

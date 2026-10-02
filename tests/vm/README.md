@@ -29,3 +29,7 @@ VM 以外の環境で root として実行しないでください。preflight �
 共通ビルド後に `./scripts/test-connect-vm.sh` を実行します。`cases/connect_monitor.py` はIPv4/IPv6成功と拒否TCP、対象外TCP、connected UDP、PID/TID/cgroup・宛先の一致を検証します。診断用の受信遅延でRingBufを満杯にし、欠落・最終計数・短命プロセスの名前不明を確認します。
 
 通常終了・SIGTERM・SIGKILLの2リンク解除に加え、connect6を欠くfixtureの部分起動失敗も試します。ローカルJSONは `artifacts/m2`、概要は [M2](../../milestones/02-connect-monitor/README.md) に記載します。
+
+## M3 接続制御
+
+ホストから `./scripts/test-policy-vm.sh` を実行します。共通ビルド成果物と `connect_policy.py` / `connect_monitor.py` を専用VMへ転送し、rootでloopback合成TCP試験を行います。M3の両フックは専用sliceだけへattachし、管理SSHと既存systemd BPFは保持します。root以外の制御拒否、容量超過、既存接続、mapped IPv6、ログ欠落と終了後復帰も確認します。JSONは `artifacts/m3` に保存します。

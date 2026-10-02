@@ -10,6 +10,7 @@ pub const QUEUE_CAPACITY: usize = 128;
 #[derive(Default, Clone, Copy)]
 pub struct Snapshot {
     pub attempted: u128,
+    pub denied: u128,
     pub emitted: u128,
     pub ring_dropped: u128,
     pub decoded: u64,
@@ -21,9 +22,10 @@ pub enum Message {
     Stats(Snapshot, bool),
 }
 pub fn worker(mut rx: Receiver<Message>) -> io::Result<()> {
-    let mut stdout = io::stdout().lock();
     let mut displayed = 0u64;
     while let Some(message) = rx.blocking_recv() {
+        // Do not hold stdout while waiting: startup/final control messages share it.
+        let mut stdout = io::stdout().lock();
         match message {
             Message::Event(e) => {
                 let (comm, status) = process::comm(e.tgid);
@@ -38,16 +40,30 @@ pub fn worker(mut rx: Receiver<Message>) -> io::Result<()> {
                 };
                 writeln!(
                     stdout,
-                    "attempt family={} tgid={} tid={} cgroup={} timestamp_ns={} destination={} protocol=tcp decision=allow connection_result=unknown comm={} comm_status={}",
-                    e.family, e.tgid, e.tid, e.cgroup_id, e.timestamp_ns, destination, comm, status
+                    "attempt family={} tgid={} tid={} cgroup={} timestamp_ns={} destination={} protocol=tcp decision={} policy_id={} connection_result=unknown comm={} comm_status={}",
+                    e.family,
+                    e.tgid,
+                    e.tid,
+                    e.cgroup_id,
+                    e.timestamp_ns,
+                    destination,
+                    if e.action == veil_warden_common::ACTION_DENIED {
+                        "deny"
+                    } else {
+                        "allow"
+                    },
+                    e.policy_id,
+                    comm,
+                    status
                 )?;
                 displayed += 1;
             }
             Message::Stats(s, final_stats) => writeln!(
                 stdout,
-                "stats final={} attempted={} emitted={} ring_dropped={} decoded={} decode_errors={} queue_dropped={} displayed={} queue_capacity={} ring_bytes={}",
+                "stats final={} attempted={} denied={} emitted={} ring_dropped={} decoded={} decode_errors={} queue_dropped={} displayed={} queue_capacity={} ring_bytes={}",
                 final_stats,
                 s.attempted,
+                s.denied,
                 s.emitted,
                 s.ring_dropped,
                 s.decoded,

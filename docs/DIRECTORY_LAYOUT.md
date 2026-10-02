@@ -2,7 +2,7 @@
 
 ## 作成済みの構成
 
-環境設定、検証ツール、方針文書を置いています。M1/M2の3クレートと観測コードもworkspaceに追加しています。
+環境設定、検証ツール、方針文書を置いています。M1〜M3の3クレートと観測・制御コードもworkspaceに追加しています。
 
 ```text
 veil-warden/
@@ -25,6 +25,7 @@ veil-warden/
 │   ├── build-counter-vm.sh         # MacからLinux builderで構築
 │   ├── test-counter-vm.sh          # M1実VM試験
 │   ├── test-connect-vm.sh          # M2実VM試験
+│   ├── test-policy-vm.sh           # M3実VM試験
 │   ├── bootstrap-builder.sh        # Mac 内のローカル Linux builder
 │   ├── build-vm.sh                 # Linux 内で独立した VM イメージを構築
 │   ├── run-vm.sh                   # ホストで専用 VM を起動
@@ -39,7 +40,8 @@ veil-warden/
 │   ├── unit/test_public_keys.py     # 公開鍵と秘密・不正データの区別
 │   └── vm/
 │       ├── README.md
-│       └── preflight.py             # VM機能、cgroup、IPv4/IPv6の実測
+│       ├── preflight.py             # VM機能、cgroup、IPv4/IPv6の実測
+│       └── cases/                   # packet_counter / connect_monitor / connect_policy
 ├── docs/                           # 設計、実行、安全性、開発ガイドライン
 ├── milestones/                     # M0〜M6 の作業・合格条件
 └── artifacts/                      # ローカル検証結果、Git 対象外
@@ -51,7 +53,7 @@ VM の秘密鍵・ディスク・起動状態はリポジトリ外の `$HOME/.ca
 
 ## ランタイム構成
 
-M1のcounterに加え、M2のconnect、decode、events、process、outputを作成済みです。policy、TUI、scanは以降の予定で、まだファイルを置いていません。M1は独立したビルドスクリプトを使い、build.rsは不要です。
+M1のcounterに加え、M2のconnect、decode、events、process、outputを作成済みです。M3のルールMap・判断はkernelのconnect.rs、追加/解除/一覧はuserのpolicy.rsに実装しています。TUI、scanは以降の予定で、まだファイルを置いていません。M1は独立したビルドスクリプトを使い、build.rsは不要です。
 
 ```text
 crates/
@@ -63,18 +65,17 @@ crates/
 │   └── src/
 │       ├── main.rs
 │       ├── counter.rs              # M1: cgroup_skb egress
-│       ├── connect.rs              # M2: connect4/connect6
-│       ├── partial_fixture.rs      # connect6欠落の起動失敗fixture
-│       └── policy.rs               # M3: 事前ルール参照
+│       ├── connect.rs              # M2/M3: connect4/connect6、事前ルール参照
+│       └── partial_fixture.rs      # connect6欠落の起動失敗fixture
 └── veil-warden/
     ├── Cargo.toml
     ├── src/
     │   ├── main.rs / cli.rs
     │   ├── loader.rs                # Linux限定、Map/link 所有
     │   ├── decode.rs / events.rs / process.rs / output.rs
-    │   ├── policy.rs / output.rs
-    │   ├── tui.rs                   # M4
-    │   └── scan.rs                  # M5
+    │   ├── policy.rs                 # M3: tuple検証、Map操作、root制御socket
+    │   ├── tui.rs                   # M4予定
+    │   └── scan.rs                  # M5予定
     └── tests/
 ```
 
