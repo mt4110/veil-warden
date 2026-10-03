@@ -15,7 +15,231 @@ use std::{
 type Result<T = ()> = std::result::Result<T, Box<dyn Error>>;
 const REPO: &str = env!("WARDEN_REPO");
 const NIX: &str = env!("WARDEN_NIX");
-const HELP: &str = "veil-warden [start | tui [--enforce] | demo | build | status | stop]\n  start   Start VMs in the background, build missing artifacts, run preflight\n  tui     Open the monitor (default when no command is given)\n  demo    Run the synthetic deny/remove/recovery demo\n  build   Rebuild sandbox and runtime (sandbox must be stopped)\n  status  Show SSH reachability and launchd ownership\n  stop    Stop only VMs managed by this command\nVMs stay running after the terminal closes; no login autostart.\nFirst use may download dependencies. Existing build artifacts are reused.\nCheckout moved? Re-run scripts/install-cli.sh from its new location.";
+#[derive(Clone, Copy)]
+enum Language {
+    Japanese,
+    English,
+}
+
+impl Language {
+    fn parse(value: &str) -> Result<Self> {
+        match value {
+            "ja" => Ok(Self::Japanese),
+            "en" => Ok(Self::English),
+            _ => Err(format!("Unsupported language '{value}'. Choose ja or en.").into()),
+        }
+    }
+}
+
+fn preferred_language() -> Language {
+    ["LC_ALL", "LC_MESSAGES", "LANG"]
+        .iter()
+        .filter_map(|key| env::var(key).ok())
+        .find(|value| !value.is_empty())
+        .is_some_and(|locale| locale.to_ascii_lowercase().starts_with("ja"))
+        .then_some(Language::Japanese)
+        .unwrap_or(Language::English)
+}
+
+fn print_help(language: Language, command: Option<&str>) {
+    let text = match (language, command) {
+        (Language::Japanese, None) => {
+            "\
+veil-warden — ローカルLinux VMで動く通信観測ツール
+
+使い方:
+  veil-warden [--lang ja|en] [コマンド] [オプション]
+  veil-warden --help | -h [--lang ja|en]
+
+コマンド:
+  start             VMを起動し、必要なビルドと事前確認を実行
+  tui               通信監視画面を開く（既定。監視のみ）
+  tui --enforce     明示的な宛先ルールで新規TCP接続を拒否
+  demo              合成通信で拒否・解除・復帰を実演
+  build             VMと実行ファイルを再ビルド
+  status            VMの起動状態を表示
+  stop              このコマンドが起動したVMを停止
+
+ヘルプ:
+  veil-warden start -h       コマンドごとの詳しい説明
+  veil-warden tui --help     コマンドごとの詳しい説明
+  veil-warden --lang en -h   英語で表示
+
+言語は --lang ja または --lang en で選べます。省略時は LC_ALL、
+LC_MESSAGES、LANG を参照し、日本語ロケール以外では英語を表示します。
+ヘルプ表示ではVMを起動しません。初回は依存の取得に時間がかかることがあります。"
+        }
+        (Language::English, None) => {
+            "\
+veil-warden — network monitoring in a local Linux VM
+
+Usage:
+  veil-warden [--lang ja|en] [COMMAND] [OPTIONS]
+  veil-warden --help | -h [--lang ja|en]
+
+Commands:
+  start             Start VMs, build missing artifacts, and run preflight
+  tui               Open the monitor (default; observe only)
+  tui --enforce     Deny new TCP connects using explicit destination rules
+  demo              Demonstrate deny, removal, and recovery with synthetic traffic
+  build             Rebuild the VM and runtime artifacts
+  status            Show VM reachability and management state
+  stop              Stop VMs started by this command
+
+Help:
+  veil-warden start -h       Show detailed help for a command
+  veil-warden tui --help     Show detailed help for a command
+  veil-warden --lang ja -h   Display help in Japanese
+
+Choose a language with --lang ja or --lang en. If omitted, the CLI reads
+LC_ALL, LC_MESSAGES, then LANG. Japanese locales select Japanese; others select
+English. Help never starts a VM. The first run may take time to download dependencies."
+        }
+        (Language::Japanese, Some("start")) => {
+            "\
+start — VMを起動して利用可能か確認します
+
+使い方: veil-warden start
+
+ビルド結果があれば再利用します。不足している場合は構築用VMを起動し、
+専用VMと監視用プログラムをビルドします。その後、専用VMを起動し、
+SSH接続と warden-preflight を確認します。初回はダウンロードとビルドに
+時間がかかることがあります。VMはターミナルを閉じても動作します。
+ログ: 状態ディレクトリ/host-cli/{builder,sandbox,preflight}.log
+VMを止めるには veil-warden stop を実行します。"
+        }
+        (Language::English, Some("start")) => {
+            "\
+start — start the VMs and check that the sandbox is ready
+
+Usage: veil-warden start
+
+Existing build artifacts are reused. If any are missing, the command starts the
+build VM and builds the sandbox and monitor. It then starts the sandbox and
+checks SSH access and warden-preflight. The first run may take time to download
+and build dependencies. VMs keep running after the terminal closes.
+Logs: STATE_DIR/host-cli/{builder,sandbox,preflight}.log
+Run veil-warden stop to stop VMs managed by this command."
+        }
+        (Language::Japanese, Some("tui")) => {
+            "\
+tui — 通信監視画面を開きます
+
+使い方: veil-warden [--lang ja|en] tui [--enforce]
+
+--enforce を省略すると監視のみです。指定すると、確認した宛先への新規TCP
+接続だけを専用テスト用cgroup内で拒否できます。UDP、既存接続、VM外の
+プロセスには適用しません。TUIでは b で拒否、d で解除を選び、表示された
+宛先を確認してEnterで実行します。Escは取消、q/Ctrl+Cは画面を閉じます。
+使い方: veil-warden tui --enforce
+終了すると監視プログラムは停止します。VMは起動したままです。"
+        }
+        (Language::English, Some("tui")) => {
+            "\
+tui — open the connection monitor
+
+Usage: veil-warden [--lang ja|en] tui [--enforce]
+
+Without --enforce, the monitor observes only. With --enforce, it can deny new
+TCP connects to confirmed destinations inside the dedicated test cgroup. It
+does not affect UDP, existing connections, or processes outside the VM. In the
+TUI, press b to prepare a deny rule or d to prepare removal, review the displayed
+destination, then press Enter to apply. Esc cancels; q/Ctrl+C exits.
+Example: veil-warden tui --enforce
+Exiting stops the monitor. The VM stays running."
+        }
+        (Language::Japanese, Some("demo")) => {
+            "\
+demo — 合成loopback通信で動作を実演します
+
+使い方: veil-warden demo
+
+専用VMを起動・確認した後、許可、拒否、ルール解除、再拒否、終了後の復帰を
+合成TCP通信で確認します。実ネットワークや任意のアプリは対象にしません。
+ヘルプ: veil-warden demo -h"
+        }
+        (Language::English, Some("demo")) => {
+            "\
+demo — demonstrate policy behavior with synthetic loopback traffic
+
+Usage: veil-warden demo
+
+Starts and checks the sandbox, then demonstrates allowed traffic, denial, rule
+removal, denial again, and recovery after exit using synthetic TCP traffic. It
+does not target arbitrary applications or external networks.
+Help: veil-warden demo -h"
+        }
+        (Language::Japanese, Some("build")) => {
+            "\
+build — VMと監視用プログラムを再ビルドします
+
+使い方: veil-warden build
+
+専用VMを停止してから実行してください。構築用VMを利用し、現在のcheckout
+からVMと実行ファイルを作り直します。既存の成果物やログは削除しません。
+初回やソース変更後は時間がかかることがあります。
+例: veil-warden stop && veil-warden build"
+        }
+        (Language::English, Some("build")) => {
+            "\
+build — rebuild the sandbox and monitor artifacts
+
+Usage: veil-warden build
+
+Stop the sandbox before rebuilding. The command uses the build VM and builds
+from the current checkout. Existing artifacts and logs are kept. Initial builds
+and builds after source changes may take time.
+Example: veil-warden stop && veil-warden build"
+        }
+        (Language::Japanese, Some("status")) => {
+            "\
+status — VMの接続状態とCLIによる管理状態を表示します
+
+使い方: veil-warden status
+
+構築用VMと専用VMのloopback SSHポートの応答、およびこのCLIが管理する
+VMジョブの状態を表示します。ポート応答だけでは、VM内部の機能が正常とは
+判定できません。詳しい確認には veil-warden start を実行してください。
+状態ディレクトリも表示します。"
+        }
+        (Language::English, Some("status")) => {
+            "\
+status — show VM connectivity and CLI management state
+
+Usage: veil-warden status
+
+Shows whether the builder and sandbox SSH ports on loopback respond, whether
+this CLI manages their launchd jobs, and the state directory. A responding port
+alone does not confirm the VM is healthy. Run veil-warden start for preflight."
+        }
+        (Language::Japanese, Some("stop")) => {
+            "\
+stop — このCLIが起動したVMを停止します
+
+使い方: veil-warden stop
+
+このCLIが管理している構築用VM・専用VMだけを停止します。手動で起動した
+VMは停止せず、元のターミナルで停止するよう案内します。監視画面だけを
+閉じる場合は q または Ctrl+C を押します。stop はビルド成果物・ログを
+削除しません。"
+        }
+        (Language::English, Some("stop")) => {
+            "\
+stop — stop VMs started by this CLI
+
+Usage: veil-warden stop
+
+Stops only builder or sandbox VMs managed by this CLI. VMs started manually are
+left running; stop those in their original terminal. To close only the monitor,
+press q or Ctrl+C. This command does not delete build artifacts or logs."
+        }
+        _ => {
+            print_help(language, None);
+            return;
+        }
+    };
+    println!("{text}");
+}
 fn operation_lock() -> Result<fs::File> {
     use std::os::unix::fs::DirBuilderExt;
     let dir = state().join("host-cli");
@@ -290,11 +514,44 @@ fn stop() -> Result {
     }
     Ok(())
 }
+
+fn parse_invocation(args: Vec<String>) -> Result<(Language, bool, Vec<String>)> {
+    let mut language = None;
+    let mut show_help = false;
+    let mut command_args = Vec::new();
+    let mut args = args.into_iter();
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--lang" | "--language" => {
+                let value = args.next().ok_or("--lang requires ja or en")?;
+                language = Some(Language::parse(&value)?);
+            }
+            "-h" | "--help" => show_help = true,
+            _ => command_args.push(arg),
+        }
+    }
+    Ok((
+        language.unwrap_or_else(preferred_language),
+        show_help,
+        command_args,
+    ))
+}
+
 fn main() -> Result {
     if env::consts::OS != "macos" || env::consts::ARCH != "aarch64" {
         return Err("Host CLI requires an Apple Silicon Mac".into());
     }
-    let args: Vec<String> = env::args().skip(1).collect();
+    let (language, show_help, args) = parse_invocation(env::args().skip(1).collect())?;
+    let help_alias = args.first().is_some_and(|arg| arg == "help");
+    if show_help || help_alias {
+        let command = if help_alias {
+            args.get(1).map(String::as_str)
+        } else {
+            args.first().map(String::as_str)
+        };
+        print_help(language, command);
+        return Ok(());
+    }
     let cmd = args.first().map(String::as_str).unwrap_or("tui");
     let rest = args.get(1..).unwrap_or(&[]);
     if cmd == "__vm" {
@@ -307,7 +564,6 @@ fn main() -> Result {
         return Err(script(name, &[]).exec().into());
     }
     match cmd {
-        "--help" | "-h" | "help" if rest.is_empty() => println!("{HELP}"),
         "start" if rest.is_empty() => start()?,
         "tui" if rest.is_empty() || rest == ["--enforce"] => {
             if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
@@ -338,7 +594,15 @@ fn main() -> Result {
             println!("Checkout: {REPO}\nState: {}", state().display());
         }
         "stop" if rest.is_empty() => stop()?,
-        _ => return Err(format!("Invalid command/arguments\n{HELP}").into()),
+        _ => {
+            return Err(match language {
+                Language::Japanese => {
+                    "コマンドまたはオプションが正しくありません。veil-warden -h を参照してください."
+                        .into()
+                }
+                Language::English => "Unknown command or option. See veil-warden -h.".into(),
+            });
+        }
     }
     Ok(())
 }

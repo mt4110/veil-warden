@@ -18,7 +18,7 @@ An experimental Rust and Aya project for observing network activity in a dedicat
 
 Cloudflare registration, organization membership, and deployment are not required. The current workflow uses Nix and local Linux VMs; dependency downloads require internet access. Detailed documents are currently in Japanese.
 
-## Run from any directory (recommended)
+## Quick start
 
 On an Apple Silicon Mac with Nix installed, run this once from the checkout:
 
@@ -38,7 +38,9 @@ VMs run in the background under macOS launchd and survive terminal closure. They
 
 Use `veil-warden start`, `veil-warden tui --enforce`, `veil-warden demo`, `veil-warden status`, and `veil-warden stop`. Stop only affects VMs managed by this CLI; existing manually started VMs are reused and preserved. Stop those in their original terminal. Each VM has a 4 GiB memory limit. Logs live in `host-cli/builder.log` and `host-cli/sandbox.log` under the existing state directory. Reinstall if the checkout moves. The installer backs up an existing CLI, and does not delete logs or disks.
 
-## Getting started
+Show all help with `veil-warden -h`. For command-specific help, use `veil-warden tui -h` or `veil-warden build --help`. Choose Japanese or English with `--lang ja` or `--lang en`; when omitted, the locale selects Japanese for Japanese locales and English otherwise. Example: `veil-warden --lang ja -h`.
+
+## Manual VM setup (for development)
 
 Use Nix on an Apple Silicon Mac. mise is not required. The first download needs internet access and several GiB of disk space.
 

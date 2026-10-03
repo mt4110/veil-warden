@@ -19,7 +19,7 @@ Rust と Aya で Linux VM 内の通信を観測し、事前ルールで新規接
 
 Cloudflareへの登録・組織参加・デプロイは不要です。NixとローカルLinux VMで実行します。依存の取得にはインターネット接続を使います。
 
-## どこからでも実行する（推奨）
+## クイックスタート
 
 Apple Silicon Mac と Nix を用意し、このリポジトリで一度だけインストールします。
 
@@ -46,9 +46,11 @@ VMはmacOSのlaunchdでバックグラウンド実行します。ターミナル
 | VMの状態 | `veil-warden status` |
 | 管理するVMを停止 | `veil-warden stop` |
 
+ヘルプは `veil-warden -h` で表示します。`veil-warden tui -h` のようにコマンド別の説明も確認できます。`--lang ja` または `--lang en` で言語を指定でき、省略時はロケールに合わせます（日本語以外は英語）。例: `veil-warden --lang en -h`。
+
 既存の手動起動VMは再利用し、`stop`では停止しません。元のターミナルで停止してください。VMログは状態ディレクトリの `host-cli/builder.log` と `host-cli/sandbox.log` です。VMごとのメモリ上限は4 GiBです。リポジトリを移動した場合は再インストールします。既存のCLIはバックアップしてから更新し、ログ・ディスクは削除しません。
 
-## 始め方
+## 手動でVMを準備する場合（開発者向け）
 
 Apple Silicon Mac と Nix を使います。mise は不要です。初回は数 GiB のダウンロードがあり、インターネット接続が必要です。
 
