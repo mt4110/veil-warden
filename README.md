@@ -4,7 +4,20 @@
 
 Rust と Aya で Linux VM 内の通信を観測し、事前ルールで新規接続を拒否する実験プロジェクトです。指定した合成テストプロセスだけを対象にします。
 
-**M4まで完了し、専用NixOS VMで検証済みです。** M1は送信SKB数、M2はTCP IPv4/IPv6の接続試行とPID/TID・宛先を表示します。M3は明示した宛先ルールに一致する新規TCP接続を拒否・解除します。既定は監視のみです。ペイロード・引数・環境変数は取得しません。
+**M5まで完了し、専用NixOS VMで検証済みです。** M1は送信SKB数、M2はTCP IPv4/IPv6の接続試行とPID/TID・宛先を表示します。M3は明示した宛先ルールに一致する新規TCP接続を拒否・解除します。既定は監視のみです。既定では引数を取得せず、ペイロード・環境変数も取得しません。M5では明示した合成プロセス1件のargvだけを一度評価し、秘密値なしで警告します。
+
+## 読みたい内容から探す
+
+| 目的 | 入口 |
+| --- | --- |
+| まず動かす・停止する | [実行ガイド](docs/GUIDE.md) / [短いデモ](docs/DEMO.md) |
+| 設計と安全性を理解する | [アーキテクチャ](docs/ARCHITECTURE.md) / [安全性](docs/SAFETY.md) |
+| 制約や未解決事項を知る | [既知の課題](docs/KNOWN_ISSUES.md) / [M5の限界](docs/SECRET_WARNING.md) |
+| 質問する・開発に参加する | [サポート](SUPPORT.md) / [貢献ガイド](CONTRIBUTING.md) |
+| 進捗と今後の候補を確認する | [ロードマップ](docs/ROADMAP.md) / [研究テーマ](docs/RESEARCH.md) |
+| すべての文書と実測記録を探す | **[ドキュメント一覧](docs/README.md)** |
+
+Cloudflareへの登録・組織参加・デプロイは不要です。NixとローカルLinux VMで実行します。依存の取得にはインターネット接続を使います。
 
 ## 始め方
 
@@ -81,15 +94,19 @@ IPv4/IPv6の拒否・解除、対象外通信、容量超過、既存接続の�
 
 TUIは接続履歴、拒否ルール、モード、欠落数を表示します。Tabと↑↓/j/kで選択し、bで拒否、dで解除を準備、宛先を確認してEnterで実行します。Escで取消、q/Ctrl+Cで終了します。履歴は128件に制限し、拒否状態を文字でも表示します。実端末から起動してください。[操作ガイド](docs/GUIDE.md#m4-tuiの実行)と[M4検証記録](milestones/04-tui/README.md)を参照してください。
 
-## 文書
+## M5 シークレット警告
 
-- [実行ガイド](docs/GUIDE.md)：前提、構築、検証、停止、復帰、トラブル対応。
-- [開発ガイドライン](docs/GUIDELINES.md)：変更範囲、設計境界、検証、公開の条件。
-- [安全性の根拠と限界](docs/SAFETY.md)：何が保護するのか、何を保証できないのか。
-- [セキュリティ方針](SECURITY.md)：脅威モデル、機密情報、問題報告。
-- [ライセンス](LICENSE.md)：MIT ライセンスと第三者の扱い。
-- [貢献ガイド](CONTRIBUTING.md)：変更提案と必須確認。
-- [ロードマップ](docs/ROADMAP.md)、[構成](docs/DIRECTORY_LAYOUT.md)、[アーキテクチャ](docs/ARCHITECTURE.md)。
+`connect --scan-argv PID:START_TICKS`で、専用cgroup内の指定プロセスだけを評価します。TUIでも評価状態・rule ID・件数を表示します。検知は送信の証拠ではなく、自動で拒否ルールを登録しません。未評価を検知なしと扱いません。最大16 KiB、1件、親の待機上限2秒です。
+
+```sh
+./scripts/test-secret-vm.sh
+```
+
+[仕様・安全性・制約](docs/SECRET_WARNING.md)と[M5検証記録](milestones/05-secret-warning/README.md)を参照してください。今回の研究はM5で区切り、M6の常駐化は保留します。
+
+## 文書とOSSの案内
+
+[ドキュメント一覧](docs/README.md)に全資料を目的別にまとめています。[変更履歴](CHANGELOG.md)、[セキュリティ報告](SECURITY.md)、[ライセンス](LICENSE.md)、[第三者の帰属](docs/third-party/veil-rs-MIT.txt)もこちらから辿れます。
 
 ## 開発時の検証
 

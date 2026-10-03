@@ -2,7 +2,7 @@
 
 ## 作成済みの構成
 
-環境設定、検証ツール、方針文書を置いています。M1〜M3の3クレートと観測・制御コードもworkspaceに追加しています。
+環境設定、検証ツール、方針文書を置いています。M0〜M5の3クレート、観測・制御・TUI・明示argv評価をworkspaceに追加しています。
 
 ```text
 veil-warden/
@@ -11,6 +11,8 @@ veil-warden/
 ├── SECURITY.md                     # セキュリティ方針
 ├── LICENSE.md                      # MIT 本文と日本語補足
 ├── CONTRIBUTING.md                 # 貢献ガイド
+├── SUPPORT.md                      # 質問、不具合、参加
+├── CHANGELOG.md                    # 未リリースの変更履歴
 ├── Cargo.toml / Cargo.lock         # 検証ツールの workspace と依存固定
 ├── rust-toolchain.toml             # stable 1.95.0
 ├── flake.nix / flake.lock          # 単一の環境定義・nixpkgs 固定
@@ -28,6 +30,7 @@ veil-warden/
 │   ├── test-policy-vm.sh           # M3実VM試験
 │   ├── demo-policy-vm.sh           # M3Aの5段階デモ
 │   ├── test-tui-vm.sh              # M4実PTY試験
+│   ├── test-secret-vm.sh           # M5のCLI/PTY/journal試験
 │   ├── tui-vm.sh                   # 実端末からTUI起動
 │   ├── bootstrap-builder.sh        # Mac 内のローカル Linux builder
 │   ├── build-vm.sh                 # Linux 内で独立した VM イメージを構築
@@ -45,7 +48,11 @@ veil-warden/
 │       ├── README.md
 │       ├── preflight.py             # VM機能、cgroup、IPv4/IPv6の実測
 │       └── cases/                   # packet_counter / connect_monitor / connect_policy
-├── docs/                           # 設計、実行、安全性、開発ガイドライン
+├── docs/
+│   ├── README.md                   # 全文書の索引
+│   ├── KNOWN_ISSUES.md             # 課題、制約、未検証
+│   ├── RESEARCH.md                 # 未着手の研究候補
+│   └── …                           # 設計、実行、安全性、スキャン仕様
 ├── milestones/                     # M0〜M6 の作業・合格条件
 └── artifacts/                      # ローカル検証結果、Git 対象外
 ```
@@ -56,7 +63,7 @@ VM の秘密鍵・ディスク・起動状態はリポジトリ外の `$HOME/.ca
 
 ## ランタイム構成
 
-M1のcounterに加え、M2のconnect、decode、events、process、outputを作成済みです。M3のルールMap・判断はkernelのconnect.rs、追加/解除/一覧はuserのpolicy.rsに実装しています。M4のTUIも実装済みで、scanは未作成です。M1は独立したビルドスクリプトを使い、build.rsは不要です。
+M1のcounterに加え、M2のconnect、decode、events、process、outputを作成済みです。M3のルールMap・判断はkernelのconnect.rs、追加/解除/一覧はuserのpolicy.rsに実装しています。M4のTUIも実装済みで、M5のscan.rsは明示したargvの一度だけの評価を担当します。M1は独立したビルドスクリプトを使い、build.rsは不要です。
 
 ```text
 crates/
@@ -78,7 +85,7 @@ crates/
     │   ├── decode.rs / events.rs / process.rs / output.rs
     │   ├── policy.rs                 # M3: tuple検証、Map操作、root制御socket
     │   ├── tui.rs                   # M4: 状態、描画、入力、端末復元
-    │   └── scan.rs                  # M5予定
+    │   └── scan.rs                  # M5: 明示argv評価、秘密値を返さない
     └── tests/
 ```
 

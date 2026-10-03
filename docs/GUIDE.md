@@ -204,3 +204,7 @@ printf '\033[?1049l\033[?25h'
 ```
 
 実PTYの受け入れ試験は `./scripts/test-tui-vm.sh`、短いCLIデモは `./scripts/demo-policy-vm.sh` です。描画失敗fixtureはテストバイナリだけに含め、通常のCLIからは起動できません。
+
+## M5の実行
+
+M5は`--scan-argv PID:START_TICKS`で指定した専用cgroupの合成プロセス1件を、attach前に一度だけ評価します。既定ではargvを読みません。値を含むFindingを生成せず、rule ID・件数・評価状態だけを返します。検知からルールを追加せず、未評価と検知なしを区別します。資源上限、PID/FDの確認、既知の見逃しと復帰手順は[仕様と限界](SECRET_WARNING.md)を参照してください。

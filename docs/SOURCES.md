@@ -31,7 +31,7 @@
 | 通常 firewall の拒否を return 1 で強制突破 | このフックの許可は後段の firewall を含む全経路の許可ではない。バイパス機能は設計対象外 |
 | infinite memlock と root が常駐の必須条件 | 採用 kernel、memcg、必要 capability と制限を実環境で確認する |
 
-表の初回送信、秘密の評価範囲、VM 運用に関する内容は、フックのタイミングと提示コードからの設計評価。完全な DLP の実証結果ではない。veil-rs のソース/API、NixOS/VM 基盤の適合性は今回未確認。
+表の初回送信、秘密の評価範囲、VM 運用に関する内容は、フックのタイミングと提示コードからの設計評価。完全な DLP の実証結果ではない。初期資料作成時点ではveil-rsのAPIとVM基盤は未確認だった。M0〜M4とM5の検証は各マイルストーンの記録を参照。
 
 ## M0 の環境に用いた一次資料
 
@@ -72,3 +72,11 @@ abstract Unix socketとpeer credentialは固定Rust 1.95.0の標準APIおよびT
 - [Crossterm 0.29.0 read/poll](https://docs.rs/crossterm/0.29.0/crossterm/event/fn.read.html)：同じ描画threadでpoll/readし、Pressイベントだけを操作として扱う。
 
 ratatui=0.30.2、crossterm=0.29.0をCargo.tomlで厳密指定し、推移依存もCargo.lockに固定する。両crateの公開manifestでMITライセンスを確認。Nixのtoolchain固定を継続し、miseやrustupで環境を切り替えない。
+
+## M5の一次資料
+
+- [veil-rs固定コミット](https://github.com/mt4110/veil-rs/tree/83592f5cfb73059f3eaadefcb98bb38262f2ff78)：Cargoで実際に取得した0.17.0のlib.rs、rules/builtin.rs、model/mod.rs、scanner/mod.rs、rules/default/secrets.tomlとLICENSE-MITを確認。隣接checkoutの未コミット変更は利用しない。
+- [rustix 1.1.5 process API](https://docs.rs/rustix/1.1.5/rustix/process/index.html)：固定版のレジストリソースでもdumpable、parent-death signal、setrlimitを確認。
+- [Linux getrlimit](https://www.man7.org/linux/man-pages/man2/getrlimit.2.html)：仮想アドレス空間とCPU・core制限の意味。256 MiBはRSSの計測値ではない。
+
+veil-rsのscan_contentは一致値と行を保持し、source用ignoreコメントを解釈する。M5は公開Ruleのpattern/validatorを直接利用する。全文APIと同じ出力・抑制動作を保証する統合ではなく、6個の既存secretルールを値なしで評価するアダプタである。

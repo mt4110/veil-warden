@@ -90,13 +90,13 @@ M5 は専用テスト cgroup の argv を明示的に選んだ場合のみ評価
 
 独立した ARM64 Linux VM を第一候補とする。VM に CPU/メモリ/ディスクの上限を設け、管理用接続を実験 cgroup の外に置く。Verifier と VM はリスクを下げるが、100%安全や秒単位の復旧を保証しない。
 
-NixOS のサービスは M6 で実装し、初期は無効・observe。CLI/daemon は同じイベント処理を利用するが、daemon で端末初期化を行わない。root は VM 内の初期検証で必要な範囲に限り、常駐時の capability とファイル権限は実カーネルで確認する。memlock と memcg の条件を診断し、無条件に LimitMEMLOCK=infinity を必須としない。
+M6のサービス化は保留中の設計です。実装する場合は初期無効・observeとします。CLI/daemon は同じイベント処理を利用するが、daemon で端末初期化を行わない。root は VM 内の初期検証で必要な範囲に限り、常駐時の capability とファイル権限は実カーネルで確認する。memlock と memcg の条件を診断し、無条件に LimitMEMLOCK=infinity を必須としない。
 
 ## 実装状況
 
 M0 の VM 設定と Rust のアーキテクチャガードを実装しました。専用 slice の実パスは `/warden.slice/warden-test.slice` です。環境はルートの flake/lock で固定し、専用 VM の root は一時的なメモリ領域、共有は公開鍵ディレクトリだけに限定しています。
 
-M1のcounterとM2のConnectEvent ABI、RingBuf、非同期受信は実装済みです。M3の通信拒否・ルールMap・root用制御ソケットも実装済みです。M4のTUIも実装済みです。secret scanは以降の設計です。M2でも正常終了・SIGTERM・SIGKILLと部分起動失敗のリンク解放を実測しています。実測結果は [M0](../milestones/00-sandbox/README.md)、安全性の説明は [安全性文書](SAFETY.md) を参照してください。
+M1のcounterとM2のConnectEvent ABI、RingBuf、非同期受信は実装済みです。M3の通信拒否・ルールMap・root用制御ソケットも実装済みです。M4のTUIも実装済みです。M5の明示argv評価と値を返さない警告も実装済みです。M2でも正常終了・SIGTERM・SIGKILLと部分起動失敗のリンク解放を実測しています。実測結果は [M0](../milestones/00-sandbox/README.md)、安全性の説明は [安全性文書](SAFETY.md) を参照してください。
 
 ## M3 制御経路と判断の順序
 
@@ -113,3 +113,7 @@ CLIは `--enforce` を明示したときだけ拒否Mapを参照するモード�
 backendの準備状態・最新stats・最大16件のルール・単一操作応答をMutexで共有する。短い状態コピー中だけlockを保持し、描画やproc読み取り中に保持しない。イベントは128件のqueueを2段通し、2段目の欠落も独立計数する。UI履歴は128件のVecDequeで、確認中のtupleは履歴とは別に保持する。操作待ちの間は次の操作を準備しない。
 
 UI起動のraw mode / alternate screenはSessionが所有する。初期描画に失敗したらBPFをattachせず復元する。途中のエラー・終了は取得済みlinkを解放し、backendの終了状態を伝えてfrontendをjoinする。SessionのDropでも復元を試みる。SIGKILL/abortではRustのDropは動かないため端末復元は保証しない。
+
+## M5の境界
+
+M5は`--scan-argv PID:START_TICKS`で指定した専用cgroupの合成プロセス1件を、attach前に一度だけ評価します。既定ではargvを読みません。値を含むFindingを生成せず、rule ID・件数・評価状態だけを返します。検知からルールを追加せず、未評価と検知なしを区別します。資源上限、PID/FDの確認、既知の見逃しと復帰手順は[仕様と限界](SECRET_WARNING.md)を参照してください。

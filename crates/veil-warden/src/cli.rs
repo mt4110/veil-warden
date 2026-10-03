@@ -10,6 +10,7 @@ pub struct Options {
     pub object: PathBuf,
     pub enforce: bool,
     pub tui: bool,
+    pub scan_argv: Option<crate::scan::Target>,
     pub initial_rule: Option<veil_warden_common::RuleKey>,
     pub mode: Mode,
     pub duration: Duration,
@@ -25,6 +26,7 @@ pub fn parse(
     let mut object = None;
     let mut enforce = false;
     let mut tui = false;
+    let mut scan_argv = None;
     let mut initial_rule = None;
     let mut interval = 1000;
     let mut samples = 0;
@@ -34,6 +36,11 @@ pub fn parse(
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--tui" => tui = true,
+            "--scan-argv" if scan_argv.is_none() => {
+                scan_argv = Some(crate::scan::Target::parse(
+                    &args.next().ok_or("missing scan target")?,
+                )?)
+            }
             "--enforce" => enforce = true,
             "--deny" if initial_rule.is_none() => {
                 let ip = args.next().ok_or("missing deny IP")?;
@@ -47,7 +54,7 @@ pub fn parse(
             }
             "--help" | "-h" => {
                 println!(
-                    "veil-warden --object PATH [--interval-ms 10..60000] [--samples N]\nDefault: egress SKB counter. Add connect for TCP connect attempts (not connection success).\nconnect: [--duration-ms 0..600000] [--reader-delay-ms 0..1000 diagnostic]\nDefault observe; connect [--tui] [--enforce] [--deny IP PORT].\nRuntime: policy list | add IP PORT | remove IP PORT; fixed VM test slice."
+                    "veil-warden --object PATH [--interval-ms 10..60000] [--samples N]\nDefault: egress SKB counter. Add connect for TCP connect attempts (not connection success).\nconnect: [--duration-ms 0..600000] [--reader-delay-ms 0..1000 diagnostic]\nDefault observe; connect [--tui] [--enforce] [--deny IP PORT].\nconnect: [--scan-argv PID:START_TICKS] one explicit test-process snapshot; warning only.\nRuntime: policy list | add IP PORT | remove IP PORT; fixed VM test slice."
                 );
                 return Ok(None);
             }
@@ -68,7 +75,7 @@ pub fn parse(
     {
         return Err("--samples is for the counter; duration/delay are for connect".into());
     }
-    if (tui || enforce || initial_rule.is_some()) && mode != Mode::Connect {
+    if (tui || enforce || initial_rule.is_some() || scan_argv.is_some()) && mode != Mode::Connect {
         return Err("policy requires connect mode".into());
     }
     if initial_rule.is_some() && !enforce {
@@ -77,6 +84,7 @@ pub fn parse(
     Ok(Some(Options {
         enforce,
         tui,
+        scan_argv,
         initial_rule,
         mode,
         duration: Duration::from_millis(duration),
@@ -101,6 +109,9 @@ mod tests {
             "--object x --samples -1",
             "--object x --cgroup /",
             "--object x --tui",
+            "--object x --scan-argv 1:1",
+            "connect --object x --scan-argv all",
+            "connect --object x --scan-argv 1:1 --scan-argv 2:2",
             "--object",
         ] {
             assert!(parse(args(s)).is_err(), "{s}");

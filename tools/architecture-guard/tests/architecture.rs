@@ -388,7 +388,7 @@ fn m3_hooks_share_scoped_policy_and_user_metadata_reads_are_scoped() {
             matches!(&function.block.stmts[0],syn::Stmt::Expr(syn::Expr::Call(call),None) if matches!(&*call.func,syn::Expr::Path(p) if p.path.is_ident("decide")))
         );
     }
-    // Literal proc reads are limited to comm; expand this reviewed set deliberately.
+    // Explicit scanner has its own reviewed proc-directory boundary.
     struct ProcPaths(Vec<String>);
     impl<'ast> Visit<'ast> for ProcPaths {
         fn visit_lit_str(&mut self, node: &'ast syn::LitStr) {
@@ -406,7 +406,9 @@ fn m3_hooks_share_scoped_policy_and_user_metadata_reads_are_scoped() {
         literals.visit_file(&f);
         for literal in literals.0 {
             assert!(
-                ["/proc/{pid}/comm", "/proc/sys/kernel/osrelease"].contains(&literal.as_str()),
+                (["/proc/{pid}/comm", "/proc/sys/kernel/osrelease"].contains(&literal.as_str())
+                    || (path.file_name().unwrap() == "scan.rs"
+                        && ["/proc/{}", "/proc/self/fd/{}/{name}"].contains(&literal.as_str()))),
                 "unexpected proc read in {}: {literal}",
                 path.display()
             );
@@ -452,5 +454,83 @@ fn tui_stays_in_user_layer_and_has_no_daemon_control_client() {
             deps.is_disjoint(&BTreeSet::from(["ratatui".into(), "crossterm".into()])),
             "UI dependencies leaked into {path}"
         );
+    }
+}
+
+fn scan_boundary(source: &str) -> bool {
+    struct Boundary(bool);
+    impl<'ast> Visit<'ast> for Boundary {
+        fn visit_attribute(&mut self, node: &'ast syn::Attribute) {
+            if !node.path().is_ident("doc") {
+                visit::visit_attribute(self, node);
+            }
+        }
+        fn visit_path(&mut self, path: &'ast syn::Path) {
+            if path.segments.iter().any(|s| {
+                matches!(
+                    s.ident.to_string().as_str(),
+                    "policy"
+                        | "Controller"
+                        | "HashMap"
+                        | "read_dir"
+                        | "scan_content"
+                        | "scan_data"
+                        | "Finding"
+                )
+            }) {
+                self.0 = false;
+            }
+            visit::visit_path(self, path);
+        }
+        fn visit_macro(&mut self, node: &'ast syn::Macro) {
+            if node
+                .path
+                .segments
+                .iter()
+                .any(|s| matches!(s.ident.to_string().as_str(), "println" | "eprintln" | "dbg"))
+            {
+                self.0 = false;
+            }
+            visit::visit_macro(self, node);
+        }
+        fn visit_lit_str(&mut self, node: &'ast syn::LitStr) {
+            if node.value().contains("environ") {
+                self.0 = false;
+            }
+        }
+    }
+    let Ok(file) = syn::parse_file(source) else {
+        return false;
+    };
+    let mut boundary = Boundary(true);
+    boundary.visit_file(&file);
+    boundary.0
+}
+#[test]
+fn m5_scan_cannot_mutate_policy_enumerate_processes_or_export_findings() {
+    let source = fs::read_to_string(root().join("crates/veil-warden/src/scan.rs")).unwrap();
+    assert!(scan_boundary(&source));
+    assert!(scan_boundary("//! environ is excluded\nfn safe() {}"));
+    for invalid in [
+        "fn bad() { crate::policy::control::client(&[]); }",
+        "fn bad() { std::fs::read_dir(\"/proc\"); }",
+        "fn bad() { veil_core::scan_content(); }",
+        "fn bad() { eprintln!(\"secret\"); }",
+        "fn bad() { let p = \"environ\"; }",
+    ] {
+        assert!(!scan_boundary(invalid));
+    }
+    let user = read_toml(&root().join("crates/veil-warden/Cargo.toml"));
+    assert_eq!(
+        user["dependencies"]["veil-core"]["rev"].as_str(),
+        Some("83592f5cfb73059f3eaadefcb98bb38262f2ff78")
+    );
+    for path in [
+        "crates/veil-warden-common/Cargo.toml",
+        "crates/veil-warden-ebpf/Cargo.toml",
+    ] {
+        let mut deps = BTreeSet::new();
+        dependency_packages(&read_toml(&root().join(path)), &mut deps);
+        assert!(deps.is_disjoint(&BTreeSet::from(["veil-core".into(), "rustix".into()])));
     }
 }

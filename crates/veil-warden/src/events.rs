@@ -113,6 +113,19 @@ async fn observe(
     let instance = File::create("/run/veil-warden-connect.lock")?;
     instance.try_lock()?;
     let cgroup = File::open("/sys/fs/cgroup/warden.slice/warden-test.slice")?;
+    if let Some(target) = options.scan_argv {
+        let summary = crate::scan::run(target);
+        if let Some(ui) = ui {
+            ui.state(|s| s.scan = Some(summary))?;
+        } else {
+            writeln!(
+                io::stdout(),
+                "scan pid={} start_ticks={} {summary}",
+                target.pid,
+                target.start_ticks
+            )?;
+        }
+    }
     let mut bpf = Ebpf::load_file(&options.object)?;
     // All maps and both programs must succeed before reporting ready.
     let stats_map = StatsMap::try_from(bpf.take_map("STATS").ok_or("STATS missing")?)?;

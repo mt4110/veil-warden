@@ -93,7 +93,10 @@
           pname = "veil-warden-architecture-guard";
           version = "0.0.0";
           src = cleanSource;
-          cargoLock.lockFile = ./Cargo.lock;
+          cargoLock = {
+            lockFile = ./Cargo.lock;
+            outputHashes."veil-config-0.17.0" = "sha256-Kcdik2+N8Tqw2j3yhrMcuE1CrAqutu9pmmXMn9HGRmI=";
+          };
           cargoBuildFlags = [
             "-p"
             "architecture-guard"
@@ -114,6 +117,8 @@
         };
         default = pkgs.mkShell {
           packages = with pkgs; [
+            pkg-config
+            openssl
             rustc
             cargo
             rustfmt

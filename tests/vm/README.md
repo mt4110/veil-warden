@@ -37,3 +37,9 @@ VM 以外の環境で root として実行しないでください。preflight �
 ## M4 TUI
 
 `./scripts/test-tui-vm.sh` はLinuxテストバイナリと通常CLIを専用VMへ転送し、PTYを使って実キー操作・リサイズ・更新失敗・端末復元・リンク解除を確認します。描画失敗fixtureはPTY内で `--ignored --exact` により明示実行し、1件実行されたことも確認します。JSONと画面のテキストsnapshotをartifacts/m4に残します。ANSI解析は試験で使うsubsetに限定し、一般的なterminal emulatorとして提供しません。
+
+## M5 argv警告
+
+M5は`--scan-argv PID:START_TICKS`で指定した専用cgroupの合成プロセス1件を、attach前に一度だけ評価します。既定ではargvを読みません。値を含むFindingを生成せず、rule ID・件数・評価状態だけを返します。検知からルールを追加せず、未評価と検知なしを区別します。資源上限、PID/FDの確認、既知の見逃しと復帰手順は[仕様と限界](../../docs/SECRET_WARNING.md)を参照してください。
+
+両VMとビルド成果物を準備して`./scripts/test-secret-vm.sh`を実行します。合成値のCLI・PTY・対象unitのjournalへの非露出、通常入力との差、開始時刻不一致・終了・対象外・非UTF-8・サイズ超過、通信許可とMap不変を確認します。権限エラーと子の打ち切り・失敗はRustテストで確認します。

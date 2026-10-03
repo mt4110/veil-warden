@@ -22,6 +22,7 @@ pub enum Command {
 }
 #[derive(Clone, Default)]
 pub struct BackendState {
+    pub scan: Option<crate::scan::Summary>,
     pub ready: bool,
     pub finished: bool,
     pub error: Option<String>,
@@ -157,7 +158,7 @@ pub fn draw(frame: &mut Frame, state: &State, ui_dropped: u64) {
     }
     let layout = Layout::default()
         .constraints([
-            Constraint::Length(3),
+            Constraint::Length(if state.backend.scan.is_some() { 7 } else { 3 }),
             Constraint::Min(5),
             Constraint::Length(6),
         ])
@@ -174,7 +175,12 @@ pub fn draw(frame: &mut Frame, state: &State, ui_dropped: u64) {
     } else {
         "準備中"
     };
-    frame.render_widget(Paragraph::new(format!("veil-warden  {mode}  {loading}\n対象: /warden.slice/warden-test.slice | 新規TCP接続 | 既存接続は継続")),layout[0]);
+    let scan = state
+        .backend
+        .scan
+        .map(|s| format!("\n{s}"))
+        .unwrap_or_default();
+    frame.render_widget(Paragraph::new(format!("veil-warden  {mode}  {loading}\n対象: /warden.slice/warden-test.slice | 新規TCP接続 | 既存接続は継続{scan}")).wrap(Wrap { trim: false }),layout[0]);
     let panes = Layout::default()
         .direction(if area.width >= 100 {
             Direction::Horizontal
