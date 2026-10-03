@@ -6,7 +6,7 @@ state="${WARDEN_STATE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/veil-warden-m0}"
 umask 077
 mkdir -p "$state/sandbox"
 if [[ "$(uname -s)" == Darwin ]]; then
-  ssh_options=(-i "$state/private/operator" -o BatchMode=yes -o IdentitiesOnly=yes
+  ssh_options=(-F /dev/null -o ConnectTimeout=5 -i "$state/private/operator" -o BatchMode=yes -o IdentitiesOnly=yes
     -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$state/bootstrap/known_hosts")
   revision=$(date +%Y%m%dT%H%M%S)
   remote="/home/builder/veil-warden-source-$revision"

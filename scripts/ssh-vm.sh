@@ -8,6 +8,6 @@ if [[ ! -s "$run/known_hosts" ]]; then
   ssh-keyscan -T 5 -t ed25519 -p 32223 127.0.0.1 > "$run/known_hosts"
   test -s "$run/known_hosts"
 fi
-exec ssh -i "$state/private/operator" -p 32223 \
+exec ssh -F /dev/null -o ConnectTimeout=5 -i "$state/private/operator" -p 32223 \
   -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
   -o UserKnownHostsFile="$run/known_hosts" warden@127.0.0.1 "$@"

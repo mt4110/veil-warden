@@ -19,35 +19,54 @@ Rust と Aya で Linux VM 内の通信を観測し、事前ルールで新規接
 
 Cloudflareへの登録・組織参加・デプロイは不要です。NixとローカルLinux VMで実行します。依存の取得にはインターネット接続を使います。
 
+## どこからでも実行する（推奨）
+
+Apple Silicon Mac と Nix を用意し、このリポジトリで一度だけインストールします。
+
+```sh
+./scripts/install-cli.sh
+```
+
+新しいターミナルを開けば、どのディレクトリからでも次の1コマンドで監視画面を開けます。
+
+```sh
+veil-warden
+```
+
+RustでビルドしたMac用コマンドを `~/.local/bin/veil-warden` に配置し、`.zshrc`（`ZDOTDIR`設定時はその配下）へPATHを追記します。VMの起動・SSH待機・不足する成果物のビルド・preflightを自動で実行します。初回の依存取得は数GiBになる場合があります。ビルド結果は次回も再利用し、ソース更新後は `veil-warden stop`、`veil-warden build` で更新します。
+
+VMはmacOSのlaunchdでバックグラウンド実行します。ターミナルを閉じてもVMは動作しますが、ログイン時の自動起動は行いません。監視本体は専用Linux VM内で動き、TUIの終了で監視を解除します。常時監視・ルール永続化を行うM6とは別の、起動手順の簡略化です。
+
+| 操作 | コマンド |
+| --- | --- |
+| VMだけ準備・起動 | `veil-warden start` |
+| 監視画面 | `veil-warden` |
+| 明示した宛先の拒否・解除 | `veil-warden tui --enforce` |
+| 合成通信のデモ | `veil-warden demo` |
+| VMの状態 | `veil-warden status` |
+| 管理するVMを停止 | `veil-warden stop` |
+
+既存の手動起動VMは再利用し、`stop`では停止しません。元のターミナルで停止してください。VMログは状態ディレクトリの `host-cli/builder.log` と `host-cli/sandbox.log` です。VMごとのメモリ上限は4 GiBです。リポジトリを移動した場合は再インストールします。既存のCLIはバックアップしてから更新し、ログ・ディスクは削除しません。
+
 ## 始め方
 
-Nix を利用します。mise は不要です。NixOS、Linux、Rust、Markdown リント、QEMU は `flake.lock` の固定した nixpkgs から取得します。
+Apple Silicon Mac と Nix を使います。mise は不要です。初回は数 GiB のダウンロードがあり、インターネット接続が必要です。
+
+次の2ステップで専用VMを準備して起動できます。1つ目のターミナルは構築用VMとして開いたままにし、2つ目で専用VMのビルド・起動・preflightをまとめて実行します。ホストのNix権限やシステム設定は変更しません。
 
 ```sh
-nix develop "path:$PWD"
-./scripts/check.sh
+# 1. ターミナル1
+nix develop "path:$PWD" -c ./scripts/bootstrap-builder.sh
 ```
-
-Apple Silicon Mac では、構築用 VM を一つ目のターミナルで起動します。ホストの Nix 権限やシステム設定を変更しません。
 
 ```sh
-./scripts/bootstrap-builder.sh
+# 2. ターミナル2
+nix develop "path:$PWD" -c ./scripts/start-vm.sh
 ```
 
-二つ目のターミナルで専用 VM をビルドして起動します。
+起動後のVMはバックグラウンドで動き、preflight結果を表示します。VMの出力は `$XDG_CACHE_HOME/veil-warden-m0/sandbox/quickstart-vm.log`（未設定なら `~/.cache/veil-warden-m0/sandbox/quickstart-vm.log`）に保存します。停止は `./scripts/ssh-vm.sh 'sudo poweroff'` です。詳しい復帰・トラブル対応は[実行ガイド](docs/GUIDE.md)を参照してください。
 
-```sh
-./scripts/build-vm.sh
-./scripts/run-vm.sh
-```
-
-三つ目のターミナルで、起動後の機能・範囲を確認します。
-
-```sh
-./scripts/ssh-vm.sh 'sudo warden-preflight'
-```
-
-初回ダウンロードには数 GiB 程度のディスク容量が必要です。VM の稼働メモリは構築用と専用 VM がそれぞれ最大 4 GiB です。実測した導入結果は [M0](milestones/00-sandbox/README.md) を参照してください。
+各VMのメモリ上限は4 GiBです。実測した導入結果は [M0](milestones/00-sandbox/README.md) を参照してください。
 
 ## M1 パケットカウンタ
 

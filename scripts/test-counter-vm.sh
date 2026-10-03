@@ -7,7 +7,7 @@ build=$(cat "$state/m1/build-path")
 # Establish this boot's verified loopback SSH state using the existing helper.
 "$repo/scripts/ssh-vm.sh" true
 run=$(cat "$state/sandbox/current-run")
-options=(-i "$state/private/operator" -o BatchMode=yes -o IdentitiesOnly=yes
+options=(-F /dev/null -o ConnectTimeout=5 -i "$state/private/operator" -o BatchMode=yes -o IdentitiesOnly=yes
   -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$run/known_hosts")
 revision=$(date +%Y%m%dT%H%M%S)-$$
 remote="/home/warden/warden-m1-$revision"

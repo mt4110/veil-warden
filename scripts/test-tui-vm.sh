@@ -5,7 +5,7 @@ repo=$(cd "$(dirname "$0")/.." && pwd)
 state="${WARDEN_STATE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/veil-warden-m0}"
 build=$(cat "$state/m1/build-path")
 # Build a test-only failing-writer fixture inside the same pinned Linux toolchain.
-builder_options=(-i "$state/private/operator" -o BatchMode=yes -o IdentitiesOnly=yes
+builder_options=(-F /dev/null -o ConnectTimeout=5 -i "$state/private/operator" -o BatchMode=yes -o IdentitiesOnly=yes
   -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$state/bootstrap/known_hosts")
 build_revision=${build##*/build-}
 builder_dir="/home/builder/warden-m1-$build_revision"
@@ -17,7 +17,7 @@ scp "${builder_options[@]}" -P 32222 "builder@127.0.0.1:$fixture" "$build/veil-w
 # Establish this boot's verified loopback SSH state using the existing helper.
 "$repo/scripts/ssh-vm.sh" true
 run=$(cat "$state/sandbox/current-run")
-options=(-i "$state/private/operator" -o BatchMode=yes -o IdentitiesOnly=yes
+options=(-F /dev/null -o ConnectTimeout=5 -i "$state/private/operator" -o BatchMode=yes -o IdentitiesOnly=yes
   -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$run/known_hosts")
 revision=$(date +%Y%m%dT%H%M%S)-$$
 remote="/home/warden/warden-m4-$revision"

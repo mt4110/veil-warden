@@ -18,35 +18,43 @@ An experimental Rust and Aya project for observing network activity in a dedicat
 
 Cloudflare registration, organization membership, and deployment are not required. The current workflow uses Nix and local Linux VMs; dependency downloads require internet access. Detailed documents are currently in Japanese.
 
+## Run from any directory (recommended)
+
+On an Apple Silicon Mac with Nix installed, run this once from the checkout:
+
+```sh
+./scripts/install-cli.sh
+```
+
+Open a new terminal, then run from any directory:
+
+```sh
+veil-warden
+```
+
+The installer builds a native Rust entry point at `~/.local/bin/veil-warden` and adds PATH to `.zshrc` (under `ZDOTDIR` when configured). The command starts the VMs, waits for authenticated SSH, builds missing artifacts, runs preflight, and opens the TUI. Initial downloads can be several GiB. Existing artifacts are reused; after source changes, stop the sandbox and run `veil-warden build`.
+
+VMs run in the background under macOS launchd and survive terminal closure. They do not start automatically at login. Monitoring still runs inside the dedicated Linux VM and ends when the TUI exits; this does not implement M6 continuous monitoring or persistent rules.
+
+Use `veil-warden start`, `veil-warden tui --enforce`, `veil-warden demo`, `veil-warden status`, and `veil-warden stop`. Stop only affects VMs managed by this CLI; existing manually started VMs are reused and preserved. Stop those in their original terminal. Each VM has a 4 GiB memory limit. Logs live in `host-cli/builder.log` and `host-cli/sandbox.log` under the existing state directory. Reinstall if the checkout moves. The installer backs up an existing CLI, and does not delete logs or disks.
+
 ## Getting started
 
-Use Nix. mise is not required. The NixOS environment, kernel, Rust tools, Markdown linter, and QEMU come from the nixpkgs revision and content hash in `flake.lock`.
+Use Nix on an Apple Silicon Mac. mise is not required. The first download needs internet access and several GiB of disk space.
+
+Start the builder in terminal 1 and leave it running. In terminal 2, build and start the sandbox; that command also runs the preflight check.
 
 ```sh
-nix develop "path:$PWD"
-./scripts/check.sh
+# 1. Terminal 1
+nix develop "path:$PWD" -c ./scripts/bootstrap-builder.sh
 ```
-
-On an Apple Silicon Mac, start the bootstrap builder in one terminal:
 
 ```sh
-./scripts/bootstrap-builder.sh
+# 2. Terminal 2
+nix develop "path:$PWD" -c ./scripts/start-vm.sh
 ```
 
-In a second terminal, build and start the sandbox:
-
-```sh
-./scripts/build-vm.sh
-./scripts/run-vm.sh
-```
-
-Once the sandbox boots, use a third terminal:
-
-```sh
-./scripts/ssh-vm.sh 'sudo warden-preflight'
-```
-
-The scripts do not change host Nix privileges or system configuration. Each VM has a 4 GiB memory limit. Initial setup requires several GiB of disk space. The sandbox root is ephemeral; booting again restores the declared configuration without deleting a disk.
+The sandbox keeps running in the background after preflight. Its output is saved under `$XDG_CACHE_HOME/veil-warden-m0/sandbox/quickstart-vm.log`, or `~/.cache/veil-warden-m0/sandbox/quickstart-vm.log` if `XDG_CACHE_HOME` is unset. Stop it with `./scripts/ssh-vm.sh 'sudo poweroff'`. The scripts do not change host Nix privileges or system configuration. Each VM has a 4 GiB memory limit. The sandbox root is ephemeral; booting again restores the declared configuration without deleting a disk.
 
 ## M1 counter
 

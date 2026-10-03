@@ -4,7 +4,7 @@
 
 Apple Silicon Mac と既存の Nix を使います。初回の取得にはインターネット、数 GiB 程度の空き容量が必要です。Nix が未導入なら、公式の導入方法を確認してから導入してください。このプロジェクトのスクリプトはホスト権限を拡大しません。
 
-全スクリプトを Nix shell 内から実行します。mise は使用しません。
+通常の起動は README の「どこからでも実行する」を使います。初回の `./scripts/install-cli.sh` 後、新しいターミナルから `veil-warden` で実行できます。下記は個別スクリプトを使う開発・検証用の手順です。mise は使用しません。
 
 ```sh
 nix develop "path:$PWD"
@@ -19,26 +19,27 @@ M0 の stable Rust と整形・リントは固定 nixpkgs 由来です。M1 の 
 ./scripts/bootstrap-builder.sh
 ```
 
-このターミナルを開いたままにします。公式のキャッシュ済み NixOS Linux builder を、ホスト設定を変更する installer を通さず起動します。launcher は固定した公式生成物の形を確認し、loopback・2 CPU・4 GiB・ディスク32 GiBへ変更します。形が変わった場合は起動前に拒否します。
+このターミナルを開いたままにします。READMEの個別スクリプト手順の1つ目で起動します。公式のキャッシュ済み NixOS Linux builder を、ホスト設定を変更する installer を通さず起動します。launcher は固定した公式生成物の形を確認し、loopback・2 CPU・4 GiB・ディスク32 GiBへ変更します。形が変わった場合は起動前に拒否します。
 
 SSH はホスト `127.0.0.1:32222`、既知の公開ホスト鍵を検証します。生成した秘密鍵は状態ディレクトリ内に保持し、VM には公開鍵だけを渡します。
 
 ## 専用 VM のビルドと起動
 
-別ターミナルで同じ Nix shell に入り、実行します。
+別ターミナルで README の個別スクリプト手順の2つ目を実行します。`start-vm.sh` が以下を続けて行います。
 
 ```sh
 ./scripts/build-vm.sh
 ./scripts/run-vm.sh
+./scripts/ssh-vm.sh 'sudo warden-preflight'
 ```
 
-ビルド用に flake・Cargo 設定、config、infra、tests、tools をローカル構築用 VM へコピーします。Linux の中で kernel/initrd/Nix store のイメージを作り、ホストへ戻します。Nix daemon の trusted-user 設定や remote builder 設定は不要です。
+最後のpreflightが通ると起動コマンドは戻り、専用VMはバックグラウンドで動き続けます。出力は `sandbox/quickstart-vm.log` にあります。ビルド用に flake・Cargo 設定、config、infra、tests、tools をローカル構築用 VM へコピーします。Linux の中で kernel/initrd/Nix store のイメージを作り、ホストへ戻します。Nix daemon の trusted-user 設定や remote builder 設定は不要です。
 
 専用 VM は `127.0.0.1:32223` で SSH を受け、root は一時的なメモリ領域です。最初の公開ホスト鍵を取得した後はその起動の鍵を検証します。2 CPU・4 GiB、ホストと共有するのは公開鍵ディレクトリだけです。
 
 ## 機能と通信範囲の検証
 
-起動後、別ターミナルから実行します。
+起動後のpreflightは自動実行されます。手動で再確認する場合は次を使います。
 
 ```sh
 mkdir -p artifacts/m0

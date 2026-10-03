@@ -12,7 +12,7 @@ revision=$(date +%Y%m%dT%H%M%S)-$$
 remote="/home/builder/warden-m1-$revision"
 destination="$state/m1/build-$revision"
 mkdir -p "$destination"
-options=(-i "$state/private/operator" -o BatchMode=yes -o IdentitiesOnly=yes
+options=(-F /dev/null -o ConnectTimeout=5 -i "$state/private/operator" -o BatchMode=yes -o IdentitiesOnly=yes
   -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$state/bootstrap/known_hosts")
 COPYFILE_DISABLE=1 tar --no-xattrs -czf "$destination/source.tar.gz" -C "$repo" \
   flake.nix flake.lock Cargo.toml Cargo.lock rust-toolchain.toml .cargo crates \
