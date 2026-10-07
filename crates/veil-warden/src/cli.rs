@@ -54,7 +54,7 @@ pub fn parse(
             }
             "--help" | "-h" => {
                 println!(
-                    "veil-warden --object PATH [--interval-ms 10..60000] [--samples N]\nDefault: egress SKB counter. Add connect for TCP connect attempts (not connection success).\nconnect: [--duration-ms 0..600000] [--reader-delay-ms 0..1000 diagnostic]\nDefault observe; connect [--tui] [--enforce] [--deny IP PORT].\nconnect: [--scan-argv PID:START_TICKS] one explicit test-process snapshot; warning only.\nRuntime: policy list | add IP PORT | remove IP PORT; fixed VM test slice."
+                    "veil-warden --object PATH [--interval-ms 10..60000] [--samples N]\nStandalone --dry-run: in-memory TUI tutorial (no BPF, sockets, or real rules).\nDefault: egress SKB counter. Add connect for TCP connect attempts (not connection success).\nconnect: [--duration-ms 0..600000] [--reader-delay-ms 0..1000 diagnostic]\nDefault observe; connect [--tui] [--enforce] [--deny IP PORT].\nconnect: [--scan-argv PID:START_TICKS] one explicit test-process snapshot; warning only.\nRuntime: policy list | add IP PORT | remove IP PORT; fixed VM test slice."
                 );
                 return Ok(None);
             }

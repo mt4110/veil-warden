@@ -8,7 +8,9 @@
 
 | 文書 | 内容 |
 | --- | --- |
+| [利用場面と模擬TUI](USE_CASES.md) | 何に使うか、Macのdry-run、操作例、Wireshark等との使い分け |
 | [実行ガイド](GUIDE.md) | Nix環境、VMの構築・起動、CLI/TUI、停止・復帰、トラブル対応 |
+| [構築VMの保守](BUILDER_MAINTENANCE.md) | QEMU/HVF、ディスク容量、共通ビルドキャッシュ、整理と復旧の方針 |
 | [短いデモ](DEMO.md) | 監視 → 拒否 → 解除 → 再拒否 → 終了後の復帰 |
 | [シークレット警告](SECRET_WARNING.md) | M5の操作、対象指定、評価状態、資源上限、検知の制約 |
 | [VM試験](../tests/vm/README.md) | 各受入試験の前提と確認範囲 |
@@ -21,6 +23,7 @@ Cloudflareのアカウント登録・組織参加・デプロイは不要です�
 
 | 文書 | 内容 |
 | --- | --- |
+| [導入と更新の設計候補](DEPLOYMENT.md) | 未実装のsystemd/DaemonSet案、リンクとMapの保持、更新・復帰の条件 |
 | [アーキテクチャ](ARCHITECTURE.md) | フック、ABI、Mapとリンクの所有、制御・表示・スキャンの境界 |
 | [ディレクトリ構成](DIRECTORY_LAYOUT.md) | ファイル配置とクレートの責務 |
 | [安全性の根拠と限界](SAFETY.md) | VM・Verifier・cgroupが減らすリスクと保証できないこと |

@@ -6,10 +6,17 @@ An experimental Rust and Aya project for observing network activity in a dedicat
 
 **M0 through M5 are implemented and tested in the dedicated NixOS VM.** M1 counts egress SKBs. M2 reports TCP IPv4/IPv6 connection attempts, destinations, TGID/TID, and best-effort process names. M3 denies new TCP connections matching explicit destination rules in the dedicated cgroup. Observe is the default. Arguments are not read by default. M5 can evaluate one explicitly selected synthetic process once; payloads and environment variables remain out of scope.
 
+## What is it for?
+
+Explore how a selected Linux process group attempts new TCP connections and how explicit destination rules deny or restore future attempts. Start with the local Mac tutorial, then use the dedicated VM for real eBPF behavior. Mac application monitoring and cloud-wide protection are not implemented.
+
+Use Wireshark for packet contents and protocol analysis. This project explores decisions at the connection hook. See [use cases and the TUI walkthrough](docs/USE_CASES.md) (Japanese) for alternatives and scope.
+
 ## Find the right document
 
 | Goal | Start here |
 | --- | --- |
+| Understand use cases and try the sample screen | [Use cases and dry-run TUI](docs/USE_CASES.md) |
 | Run, stop, or recover | [Operation guide](docs/GUIDE.md) / [short demo](docs/DEMO.md) |
 | Understand design and safety | [Architecture](docs/ARCHITECTURE.md) / [safety boundaries](docs/SAFETY.md) |
 | Check limitations and open work | [Known issues](docs/KNOWN_ISSUES.md) / [research themes](docs/RESEARCH.md) |
@@ -26,19 +33,25 @@ On an Apple Silicon Mac with Nix installed, run this once from the checkout:
 ./scripts/install-cli.sh
 ```
 
-Open a new terminal, then run from any directory:
+Open a new terminal, then open the **sample TUI** from any directory:
 
 ```sh
 veil-warden
 ```
 
-The installer builds a native Rust entry point at `~/.local/bin/veil-warden` and adds PATH to `.zshrc` (under `ZDOTDIR` when configured). The command starts the VMs, waits for authenticated SSH, builds missing artifacts, runs preflight, and opens the TUI. Initial downloads can be several GiB. Existing artifacts are reused; after source changes, stop the sandbox and run `veil-warden build`.
+The installer builds a native Rust entry point at `~/.local/bin/veil-warden` and adds PATH to `.zshrc` (under `ZDOTDIR` when configured). The installer also builds the native sample renderer. With no command, the CLI opens a dry-run tutorial with three fictional events, no VM startup, and no real traffic or denial. Use b, Enter, n to simulate denial, then Tab, d, Enter, n to remove it. The screen is in Japanese.
+
+Run `veil-warden tui` for real monitoring inside the Linux VM. That command starts the VMs, waits for authenticated SSH, builds missing artifacts, runs preflight, and opens the live TUI. The history remains empty until a process in the dedicated cgroup attempts a new TCP connection. Initial downloads can be several GiB. Existing artifacts are reused; after source changes, rerun `./scripts/install-cli.sh` for the Mac launcher and preview, then stop the sandbox and run `veil-warden build` for the VM runtime.
 
 VMs run in the background under macOS launchd and survive terminal closure. They do not start automatically at login. Monitoring still runs inside the dedicated Linux VM and ends when the TUI exits; this does not implement M6 continuous monitoring or persistent rules.
 
-Use `veil-warden start`, `veil-warden tui --enforce`, `veil-warden demo`, `veil-warden status`, and `veil-warden stop`. Stop only affects VMs managed by this CLI; existing manually started VMs are reused and preserved. Stop those in their original terminal. Each VM has a 4 GiB memory limit. Logs live in `host-cli/builder.log` and `host-cli/sandbox.log` under the existing state directory. Reinstall if the checkout moves. The installer backs up an existing CLI, and does not delete logs or disks.
+Use `veil-warden tui --dry-run` for the sample screen. For the VM, use `veil-warden start`, `veil-warden tui --enforce`, `veil-warden demo`, `veil-warden status`, and `veil-warden stop`. Stop only affects VMs managed by this CLI; existing manually started VMs are reused and preserved. Stop those in their original terminal. Each VM has a 4 GiB memory limit. Logs live in `host-cli/builder.log` and `host-cli/sandbox.log` under the existing state directory. Reinstall if the checkout moves. The installer backs up an existing CLI, and does not delete logs or disks.
 
 Show all help with `veil-warden -h`. For command-specific help, use `veil-warden tui -h` or `veil-warden build --help`. Choose Japanese or English with `--lang ja` or `--lang en`; when omitted, the locale selects Japanese for Japanese locales and English otherwise. Example: `veil-warden --lang ja -h`.
+
+## Server deployment and updates
+
+[Deployment design candidates](docs/DEPLOYMENT.md) (Japanese) describe systemd installation, possible DaemonSet placement, link/map lifetime, and update rollback. These are unimplemented and unverified proposals, with no zero-downtime, lossless logging, or production protection guarantee. Implementation awaits a concrete service requirement that existing tools cannot adequately meet.
 
 ## Manual VM setup (for development)
 

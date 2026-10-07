@@ -6,10 +6,17 @@ Rust と Aya で Linux VM 内の通信を観測し、事前ルールで新規接
 
 **M5まで完了し、専用NixOS VMで検証済みです。** M1は送信SKB数、M2はTCP IPv4/IPv6の接続試行とPID/TID・宛先を表示します。M3は明示した宛先ルールに一致する新規TCP接続を拒否・解除します。既定は監視のみです。既定では引数を取得せず、ペイロード・環境変数も取得しません。M5では明示した合成プロセス1件のargvだけを一度評価し、秘密値なしで警告します。
 
+## 何に使うものか
+
+指定したLinuxプロセスの「新しいTCP接続」を観測し、宛先を選んで拒否・解除する仕組みを試します。最初はMacの模擬TUIで操作を体験し、必要なら専用VMで実通信を確認します。Macの全通信監視やクラウド全体の保護は実装していません。
+
+パケットの内容やプロトコルを調べる用途にはWiresharkが適しています。このプロジェクトでは接続時点の宛先判断を扱います。[利用場面とTUIの操作体験](docs/USE_CASES.md)に、使う場面・代替手段・終了条件をまとめました。
+
 ## 読みたい内容から探す
 
 | 目的 | 入口 |
 | --- | --- |
+| 何に使うか・画面操作を体験する | [利用場面と模擬TUI](docs/USE_CASES.md) |
 | まず動かす・停止する | [実行ガイド](docs/GUIDE.md) / [短いデモ](docs/DEMO.md) |
 | 設計と安全性を理解する | [アーキテクチャ](docs/ARCHITECTURE.md) / [安全性](docs/SAFETY.md) |
 | 制約や未解決事項を知る | [既知の課題](docs/KNOWN_ISSUES.md) / [M5の限界](docs/SECRET_WARNING.md) |
@@ -27,20 +34,23 @@ Apple Silicon Mac と Nix を用意し、このリポジトリで一度だけイ
 ./scripts/install-cli.sh
 ```
 
-新しいターミナルを開けば、どのディレクトリからでも次の1コマンドで監視画面を開けます。
+新しいターミナルを開けば、どのディレクトリからでも次の1コマンドで**模擬TUI**を開けます。VMは起動せず、実通信も行いません。
 
 ```sh
 veil-warden
 ```
 
-RustでビルドしたMac用コマンドを `~/.local/bin/veil-warden` に配置し、`.zshrc`（`ZDOTDIR`設定時はその配下）へPATHを追記します。VMの起動・SSH待機・不足する成果物のビルド・preflightを自動で実行します。初回の依存取得は数GiBになる場合があります。ビルド結果は次回も再利用し、ソース更新後は `veil-warden stop`、`veil-warden build` で更新します。
+RustでビルドしたMac用コマンドを `~/.local/bin/veil-warden` に配置し、`.zshrc`（`ZDOTDIR`設定時はその配下）へPATHを追記します。画面用のMac実行ファイルも同時に配置します。模擬TUIでは3件の架空イベントが表示され、`b → Enter → n` で拒否、`Tab → d → Enter → n` で解除を体験できます。模擬データであり、Macのアプリは監視しません。画面は日本語です。
+
+**実際のeBPF監視は `veil-warden tui` で起動します。** VMの起動・SSH待機・不足する成果物のビルド・preflightを自動で実行します。初回の依存取得は数GiBになる場合があります。専用cgroupで通信が発生しなければ履歴は空です。ビルド結果は次回も再利用します。ソース更新後は `./scripts/install-cli.sh` でMac用コマンドと模擬画面を更新し、VM実行ファイルは `veil-warden stop`、`veil-warden build` で更新します。
 
 VMはmacOSのlaunchdでバックグラウンド実行します。ターミナルを閉じてもVMは動作しますが、ログイン時の自動起動は行いません。監視本体は専用Linux VM内で動き、TUIの終了で監視を解除します。常時監視・ルール永続化を行うM6とは別の、起動手順の簡略化です。
 
 | 操作 | コマンド |
 | --- | --- |
 | VMだけ準備・起動 | `veil-warden start` |
-| 監視画面 | `veil-warden` |
+| Macの模擬TUI（実通信なし） | `veil-warden` または `veil-warden tui --dry-run` |
+| VM内の実監視画面 | `veil-warden tui` |
 | 明示した宛先の拒否・解除 | `veil-warden tui --enforce` |
 | 合成通信のデモ | `veil-warden demo` |
 | VMの状態 | `veil-warden status` |
@@ -49,6 +59,10 @@ VMはmacOSのlaunchdでバックグラウンド実行します。ターミナル
 ヘルプは `veil-warden -h` で表示します。`veil-warden tui -h` のようにコマンド別の説明も確認できます。`--lang ja` または `--lang en` で言語を指定でき、省略時はロケールに合わせます（日本語以外は英語）。例: `veil-warden --lang en -h`。
 
 既存の手動起動VMは再利用し、`stop`では停止しません。元のターミナルで停止してください。VMログは状態ディレクトリの `host-cli/builder.log` と `host-cli/sandbox.log` です。VMごとのメモリ上限は4 GiBです。リポジトリを移動した場合は再インストールします。既存のCLIはバックアップしてから更新し、ログ・ディスクは削除しません。
+
+## クラウド導入・稼働中サーバーでの更新
+
+単体Linuxサーバーへのsystemd導入、将来のDaemonSet配置、リンクとMapの保持、更新失敗時の復帰を[設計候補](docs/DEPLOYMENT.md)として整理しています。いずれも未実装・未検証です。無停止更新、ログ欠落ゼロ、本番保護を保証する機能ではありません。具体的な対象サービスと既存手段の不足が確認できるまで、実装は広げません。
 
 ## 手動でVMを準備する場合（開発者向け）
 

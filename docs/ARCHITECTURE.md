@@ -117,3 +117,9 @@ UI起動のraw mode / alternate screenはSessionが所有する。初期描画�
 ## M5の境界
 
 M5は`--scan-argv PID:START_TICKS`で指定した専用cgroupの合成プロセス1件を、attach前に一度だけ評価します。既定ではargvを読みません。値を含むFindingを生成せず、rule ID・件数・評価状態だけを返します。検知からルールを追加せず、未評価と検知なしを区別します。資源上限、PID/FDの確認、既知の見逃しと復帰手順は[仕様と限界](SECRET_WARNING.md)を参照してください。
+
+## Macの模擬TUI
+
+ホストCLIのコマンド省略時と `tui --dry-run` は、Mac用にビルドした描画プログラムへ `--dry-run` を渡します。Linuxのloaderを呼ばず、3件の架空イベントとメモリ内ルールを使います。TUIの描画・キー操作・確認tuple・端末Sessionは実監視と共用し、イベント生成とルール適用だけを模擬backendが担当します。`n`は選択イベントの宛先への再試行を模擬します。BPF・SSH・ネットワーク接続・proc参照・ルール永続化は行いません。
+
+実監視は引き続き `tui` / `tui --enforce` で専用VMへ接続します。模擬画面と実監視の使い分けは[利用場面](USE_CASES.md)、将来のサーバー導入と更新の候補は[設計文書](DEPLOYMENT.md)を参照してください。

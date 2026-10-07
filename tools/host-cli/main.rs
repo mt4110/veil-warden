@@ -53,7 +53,8 @@ veil-warden — ローカルLinux VMで動く通信観測ツール
 
 コマンド:
   start             VMを起動し、必要なビルドと事前確認を実行
-  tui               通信監視画面を開く（既定。監視のみ）
+  tui --dry-run     Macで模擬TUIを開く（コマンド省略時の既定）
+  tui               Linux VMの通信監視画面を開く（監視のみ）
   tui --enforce     明示的な宛先ルールで新規TCP接続を拒否
   demo              合成通信で拒否・解除・復帰を実演
   build             VMと実行ファイルを再ビルド
@@ -79,7 +80,8 @@ Usage:
 
 Commands:
   start             Start VMs, build missing artifacts, and run preflight
-  tui               Open the monitor (default; observe only)
+  tui --dry-run     Open the sample TUI on Mac (default when no command is given)
+  tui               Open the Linux VM monitor (observe only)
   tui --enforce     Deny new TCP connects using explicit destination rules
   demo              Demonstrate deny, removal, and recovery with synthetic traffic
   build             Rebuild the VM and runtime artifacts
@@ -125,7 +127,12 @@ Run veil-warden stop to stop VMs managed by this command."
             "\
 tui — 通信監視画面を開きます
 
-使い方: veil-warden [--lang ja|en] tui [--enforce]
+使い方: veil-warden [--lang ja|en] tui [--dry-run | --enforce]
+
+--dry-run は架空のイベントで操作を体験します。VM・SSH・実通信・実拒否は
+使いません。画面は日本語です。b → Enter → n で模擬拒否、
+Tab → d → Enter → n で模擬解除を確認します。コマンド省略時もこのモードです。
+--dry-run と --enforce は併用できません。
 
 --enforce を省略すると監視のみです。指定すると、確認した宛先への新規TCP
 接続だけを専用テスト用cgroup内で拒否できます。UDP、既存接続、VM外の
@@ -138,7 +145,12 @@ tui — 通信監視画面を開きます
             "\
 tui — open the connection monitor
 
-Usage: veil-warden [--lang ja|en] tui [--enforce]
+Usage: veil-warden [--lang ja|en] tui [--dry-run | --enforce]
+
+--dry-run opens an in-memory tutorial with fictional events. No VM, SSH, real
+traffic, or real denial is used. The TUI is in Japanese. Try b, Enter, n to
+simulate denial; Tab, d, Enter, n to remove it. No command also selects this mode.
+--dry-run cannot be combined with --enforce.
 
 Without --enforce, the monitor observes only. With --enforce, it can deny new
 TCP connects to confirmed destinations inside the dedicated test cgroup. It
@@ -537,6 +549,20 @@ fn parse_invocation(args: Vec<String>) -> Result<(Language, bool, Vec<String>)> 
     ))
 }
 
+fn preview() -> Result {
+    if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
+        return Err("Run veil-warden tui --dry-run in an interactive terminal".into());
+    }
+    let binary = env::current_exe()?.with_file_name("veil-warden-preview");
+    if !binary.is_file() {
+        return Err("Preview is missing; run ./scripts/install-cli.sh from the checkout".into());
+    }
+    let status = Command::new(binary).arg("--dry-run").status()?;
+    if !status.success() {
+        return Err("Dry-run TUI failed".into());
+    }
+    Ok(())
+}
 fn main() -> Result {
     if env::consts::OS != "macos" || env::consts::ARCH != "aarch64" {
         return Err("Host CLI requires an Apple Silicon Mac".into());
@@ -551,6 +577,9 @@ fn main() -> Result {
         };
         print_help(language, command);
         return Ok(());
+    }
+    if args.is_empty() || args == ["tui", "--dry-run"] {
+        return preview();
     }
     let cmd = args.first().map(String::as_str).unwrap_or("tui");
     let rest = args.get(1..).unwrap_or(&[]);

@@ -10,6 +10,14 @@ WARDEN_REPO="$PWD" WARDEN_NIX="$(command -v nix)" rustc --edition=2024 -D warnin
 ./target/host-cli/tests
 cargo clippy --locked --workspace --all-targets -- -D warnings
 cargo test --locked --workspace
+if [[ "$(uname -s)" == Darwin && "$(uname -m)" == arm64 ]]; then
+  WARDEN_REPO="$PWD" WARDEN_NIX="$(command -v nix)" rustc --edition=2024 -D warnings \
+    tools/host-cli/main.rs -o target/host-cli/veil-warden
+  cargo build --locked -p veil-warden --bin veil-warden \
+    --target aarch64-apple-darwin --target-dir "$PWD/target"
+  cp target/aarch64-apple-darwin/debug/veil-warden target/host-cli/veil-warden-preview
+  python3 tests/host/test_dry_run.py target/host-cli/veil-warden
+fi
 python3 -m unittest discover -s tests/unit -v
 markdownlint-cli2
 nixfmt --check flake.nix infra/nixos/vm.nix
