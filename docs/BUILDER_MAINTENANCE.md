@@ -13,15 +13,17 @@ Mac上でQEMUのARM64 Linux VMを2台使います。構築用は公式NixOS Linu
 | 保存対象 | 場所と方針 |
 | --- | --- |
 | 構築VMのソース | `/home/builder/warden-m1-日時-PID` に世代別で保存 |
-| Cargoの中間成果物 | `/home/builder/.cache/veil-warden-build/target` を再利用 |
+| Cargoの中間成果物 | `/home/builder/.cache/veil-warden-build/target/generations/<内容ハッシュ>`。同じ入力だけ再利用 |
 | 完成したLinux CLIとBPF 2個 | 各ソースの `output` にコピーし、Macへ取得 |
 | Macの成果物とソースアーカイブ | `~/.cache/veil-warden-m0/m1/build-日時-PID` に保存 |
 | 検証記録 | checkoutの `artifacts/`。保持する |
 | Nixの依存・ソース | Nixが管理。手作業でstoreを削除しない |
 
-`CARGO_TARGET_DIR` はCargoの既存機能です。[Cargo公式のキャッシュ説明](https://doc.rust-lang.org/cargo/reference/build-cache.html)を参照してください。キャッシュの場所を一つにし、Nixの `path:` ソース取り込み範囲の外へ置きます。同じソースディレクトリ内に大きな `target` を作ると、flakeの出力用filterより前のソース取り込みにも混ざり得るためです。ビルド全体と完成成果物のコピーは一つのロックで保護します。
+`CARGO_TARGET_DIR` はCargoの既存機能です。[Cargo公式のキャッシュ説明](https://doc.rust-lang.org/cargo/reference/build-cache.html)を参照してください。`CARGO_TARGET_DIR` はこのスクリプトではキャッシュの基点として扱い、その下の `generations/<内容ハッシュ>` をCargoへ渡します。Git履歴や更新時刻ではなく、ローカルソース・manifest・lock・toolchain・設定・ビルドスクリプト等の内容からキーを作ります。古い更新時刻のソースを復元しても、異なる内容のコンパイル結果は共用しません。Nixの `path:` ソース取り込み範囲の外へ置きます。同じソースディレクトリ内に大きな `target` を作ると、flakeの出力用filterより前のソース取り込みにも混ざり得るためです。ビルド全体と完成成果物のコピーは一つのロックで保護します。
 
-完成成果物は世代別に保持するので、容量が永久に増えない方式ではありません。OS・コンパイラ・依存の版が増える場合も容量確認が必要です。自動削除や自動GCは行いません。
+ネイティブCLIはNixのRustコンパイラのhost tripleを明示し、ターゲット別の出力をコピーします。ビルド中に入力が変わった場合は完成成果物のコピーを拒否します。使用したキャッシュの実パスとキーは `output/cargo-target-dir`、`output/build-source-key`（直接ビルド時は指定した出力先）に保存します。TUI試験のビルドもこの実パスを使います。
+
+Cargoのダウンロードキャッシュは共有しますが、コンパイル済み依存も内容ハッシュごとに保持するため、新しい世代では再コンパイルと追加のディスク容量が必要です。既存の共通キャッシュは削除・移動しません。完成成果物も世代別に保持するので、容量が永久に増えない方式ではありません。OS・コンパイラ・依存の版が増える場合も容量確認が必要です。自動削除や自動GCは行いません。
 
 ## 容量の確認と整理
 

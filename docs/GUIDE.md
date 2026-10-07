@@ -86,7 +86,7 @@ Apple Siliconでは、構築用VMと専用VMを起動し、ホストのリポジ
 
 ビルドスクリプトは明示したソースだけを構築用VMへコピーします。成果物は状態ディレクトリの `m1/build-日時-PID`、受け入れ試験のJSONは `artifacts/m1/acceptance-日時-PID.json` に保持します。テスト用コピーは専用VMの `/home/warden/warden-m1-日時-PID` に置きます。既存のホスト成果物を削除しません。
 
-構築用VMのCargoキャッシュは `/home/builder/.cache/veil-warden-build/target` を共用します。日時ごとのソースディレクトリ内には `target` を作りません。依存のコンパイル結果を再利用し、Nixへのソース取り込みに中間成果物が混ざることを避けます。ビルド全体をロックし、完了した3成果物だけを各ソースの `output` にコピーしてからMacへ取得します。ソース・成果物・検証記録は保存するため、保存量が無制限に増えない保証ではありません。容量確認と整理は[構築VMの保守](BUILDER_MAINTENANCE.md)を参照してください。
+構築用VMのCargoキャッシュは `/home/builder/.cache/veil-warden-build/target/generations/<内容ハッシュ>` に分け、同じ入力の結果だけを再利用します。日時ごとのソースディレクトリ内には `target` を作りません。更新時刻の古いソースを復元しても異なる内容の結果を使わず、Nixへのソース取り込みに中間成果物が混ざることを避けます。ビルド全体をロックし、完了した3成果物だけを各ソースの `output` にコピーしてからMacへ取得します。ソース・成果物・検証記録は保存するため、保存量が無制限に増えない保証ではありません。容量確認と整理は[構築VMの保守](BUILDER_MAINTENANCE.md)を参照してください。
 
 受け入れ試験はIPv4/IPv6で8個ずつ合成UDPデータグラムを送り、受信・カウント増加を確認します。対象外の同じ通信ではカウンタが増えないこと、通常終了・SIGTERM・SIGKILLで自作リンクだけが消えること、管理SSHが維持されることも確認します。
 
@@ -101,7 +101,7 @@ sudo /home/warden/warden-m1-日時-PID/veil-warden \
 
 `--samples 0`（既定）はSIGINT/SIGTERMまで継続します。対象cgroupは固定で、変更する引数はありません。クライアントは `systemd-run --slice=warden-test.slice` で所属してからソケットを作ります。CLI自体は対象sliceの外で実行します。ヘッダやペイロードの収集・書き換え、宛先別集計は行いません。
 
-Linuxでソースからビルドする場合は `./scripts/build-counter.sh` を使います。完成したCLI・BPF・部分attach試験用オブジェクトは `artifacts/build/` にコピーします。`WARDEN_BUILD_OUTPUT` で出力先を変更できます。キャッシュは既定で `${XDG_CACHE_HOME:-$HOME/.cache}/veil-warden-build/target`、`CARGO_TARGET_DIR` で変更できますがソースディレクトリ内は拒否します。自分でビルドしたオブジェクトだけをロードしてください。任意のオブジェクトの安全性をCLIが証明する機能はありません。
+Linuxでソースからビルドする場合は `./scripts/build-counter.sh` を使います。完成したCLI・BPF・部分attach試験用オブジェクトは `artifacts/build/` にコピーします。`WARDEN_BUILD_OUTPUT` で出力先を変更できます。キャッシュは既定で `${XDG_CACHE_HOME:-$HOME/.cache}/veil-warden-build/target`、`CARGO_TARGET_DIR` で基点を変更できますがソースディレクトリ内は拒否します。その下の `generations/<内容ハッシュ>` が実際のビルド先です。ネイティブLinuxのhost tripleを明示してCLIをビルドし、そのターゲットの成果物をコピーします。自分でビルドしたオブジェクトだけをロードしてください。任意のオブジェクトの安全性をCLIが証明する機能はありません。
 
 起動時の読み込み・Map・attach失敗はエラー終了します。既存のsystemdファイアウォールと共存するcgroup BPF linkを使い、既存programを上書き・解除しません。`/run/veil-warden-counter.lock` のFDロックで同じCLIの二重起動を拒否します。ロックファイルが存在していても、終了後はFDロックが解放されて再起動できます。
 
