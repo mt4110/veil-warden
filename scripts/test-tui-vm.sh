@@ -10,7 +10,7 @@ builder_options=(-F /dev/null -o ConnectTimeout=5 -i "$state/private/operator" -
 build_revision=${build##*/build-}
 builder_dir="/home/builder/warden-m1-$build_revision"
 ssh "${builder_options[@]}" -p 32222 builder@127.0.0.1 \
-  "cd '$builder_dir'; nix --extra-experimental-features 'nix-command flakes' develop 'path:$builder_dir' -c cargo test --locked -p veil-warden --no-run --message-format=json" \
+  "cd '$builder_dir'; export CARGO_TARGET_DIR=/home/builder/.cache/veil-warden-build/target; nix --extra-experimental-features 'nix-command flakes' develop 'path:$builder_dir' -c cargo test --locked -p veil-warden --no-run --message-format=json" \
   > "$build/test-build.json"
 fixture=$(python3 -c 'import json,sys; print(next(r["executable"] for r in (json.loads(line) for line in open(sys.argv[1]) if line.startswith("{")) if r.get("executable") and r.get("profile",{}).get("test")))' "$build/test-build.json")
 scp "${builder_options[@]}" -P 32222 "builder@127.0.0.1:$fixture" "$build/veil-warden-tests"

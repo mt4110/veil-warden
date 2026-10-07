@@ -2,6 +2,7 @@
 mod cli;
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 mod decode;
+mod dry_run;
 #[cfg(target_os = "linux")]
 mod events;
 #[cfg(target_os = "linux")]
@@ -14,10 +15,19 @@ mod policy;
 mod process;
 #[cfg_attr(not(target_os = "linux"), allow(dead_code, unused_imports))]
 mod scan;
+mod terminal_session;
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 mod tui;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args == ["--dry-run"] {
+        return dry_run::run();
+    }
+    if args.iter().any(|arg| arg == "--dry-run") {
+        return Err(
+            "--dry-run must be used alone; it cannot load BPF or enforce real rules".into(),
+        );
+    }
     if args.first().is_some_and(|s| s == "__scan-argv") {
         #[cfg(target_os = "linux")]
         {

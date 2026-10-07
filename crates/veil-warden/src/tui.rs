@@ -36,6 +36,7 @@ enum Focus {
     Rules,
 }
 pub struct State {
+    dry_run: bool,
     enforce: bool,
     backend: BackendState,
     events: VecDeque<EventRow>,
@@ -50,6 +51,7 @@ pub struct State {
 impl State {
     pub fn new(enforce: bool) -> Self {
         Self {
+            dry_run: false,
             enforce,
             backend: BackendState::default(),
             events: VecDeque::new(),
@@ -61,6 +63,52 @@ impl State {
             status: "準備中: 両フックの起動を待っています".into(),
             history_evicted: 0,
         }
+    }
+    pub fn preview() -> Self {
+        let mut state = Self::new(true);
+        state.dry_run = true;
+        state
+    }
+    pub fn selected_event(&self) -> Option<EventRow> {
+        self.events.get(self.event_index).cloned()
+    }
+    pub fn key(&mut self, key: crossterm::event::KeyEvent) -> Input {
+        use crossterm::event::{KeyCode, KeyEventKind, KeyModifiers};
+        if key.kind != KeyEventKind::Press {
+            return Input::None;
+        }
+        match key.code {
+            KeyCode::Char('q') => return Input::Quit,
+            KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                return Input::Quit;
+            }
+            KeyCode::Tab => {
+                self.focus = if self.focus == Focus::Events {
+                    Focus::Rules
+                } else {
+                    Focus::Events
+                }
+            }
+            KeyCode::Up | KeyCode::Char('k') => self.move_selection(false),
+            KeyCode::Down | KeyCode::Char('j') => self.move_selection(true),
+            KeyCode::Char('b') => self.prepare(false),
+            KeyCode::Char('d') => self.prepare(true),
+            KeyCode::Esc => {
+                self.pending = None;
+                self.status = "操作を取り消しました".into();
+            }
+            KeyCode::Enter => {
+                if let Some(cmd) = self.confirm() {
+                    return Input::Command(cmd);
+                }
+            }
+            _ => {}
+        }
+        Input::None
+    }
+    pub fn command_failed(&mut self) {
+        self.busy = false;
+        self.status = "更新失敗: 制御経路が利用できません".into();
     }
     pub fn push(&mut self, row: EventRow) {
         let follow = self.events.is_empty() || self.event_index + 1 == self.events.len();
@@ -87,7 +135,12 @@ impl State {
             self.pending = None;
         }
         if backend.ready && !self.backend.ready && backend.error.is_none() {
-            self.status = "準備完了。接続試行を表示します（成功判定ではありません）".into();
+            self.status = if self.dry_run {
+                "模擬データ。b → Enter → n で拒否を体験。Tab → d → Enter → n で解除。"
+            } else {
+                "準備完了。接続試行を表示します（成功判定ではありません）"
+            }
+            .into();
         }
         self.rule_index = self.rule_index.min(backend.rules.len().saturating_sub(1));
         self.backend = backend;
@@ -147,11 +200,16 @@ impl State {
         Some(cmd)
     }
 }
+pub enum Input {
+    None,
+    Quit,
+    Command(Command),
+}
 pub fn draw(frame: &mut Frame, state: &State, ui_dropped: u64) {
     let area = frame.area();
     if area.width < 60 || area.height < if area.width >= 100 { 16 } else { 20 } {
         frame.render_widget(
-            Paragraph::new("端末を60列×20行以上に広げてください。\n/warden.slice/warden-test.slice\nq / Ctrl+C: 終了"),
+            Paragraph::new(if state.dry_run { "DRY-RUN / 模擬データ（実通信・実拒否なし）\n端末を60列×20行以上に広げてください。\nq / Ctrl+C: 終了" } else { "端末を60列×20行以上に広げてください。\n/warden.slice/warden-test.slice\nq / Ctrl+C: 終了" }),
             area,
         );
         return;
@@ -163,7 +221,9 @@ pub fn draw(frame: &mut Frame, state: &State, ui_dropped: u64) {
             Constraint::Length(6),
         ])
         .split(area);
-    let mode = if state.enforce {
+    let mode = if state.dry_run {
+        "DRY-RUN / 模擬データ（実通信・実拒否なし）"
+    } else if state.enforce {
         "ENFORCE / 拒否有効"
     } else {
         "OBSERVE / 監視のみ"
@@ -180,7 +240,16 @@ pub fn draw(frame: &mut Frame, state: &State, ui_dropped: u64) {
         .scan
         .map(|s| format!("\n{s}"))
         .unwrap_or_default();
-    frame.render_widget(Paragraph::new(format!("veil-warden  {mode}  {loading}\n対象: /warden.slice/warden-test.slice | 新規TCP接続 | 既存接続は継続{scan}")).wrap(Wrap { trim: false }),layout[0]);
+    let scope = if state.dry_run {
+        "架空のLinuxサービス | n: 選択した宛先へ再試行（模擬）"
+    } else {
+        "対象: /warden.slice/warden-test.slice | 新規TCP接続 | 既存接続は継続"
+    };
+    frame.render_widget(
+        Paragraph::new(format!("veil-warden  {mode}  {loading}\n{scope}{scan}"))
+            .wrap(Wrap { trim: false }),
+        layout[0],
+    );
     let panes = Layout::default()
         .direction(if area.width >= 100 {
             Direction::Horizontal
@@ -235,6 +304,15 @@ pub fn draw(frame: &mut Frame, state: &State, ui_dropped: u64) {
         panes[0],
         &mut selected,
     );
+    if state.events.is_empty() {
+        let inner = ratatui::layout::Rect::new(
+            panes[0].x + 1,
+            panes[0].y + 2,
+            panes[0].width.saturating_sub(2),
+            panes[0].height.saturating_sub(3),
+        );
+        frame.render_widget(Paragraph::new("専用cgroup内の新規TCP接続を待っています。\nMacの通信は対象外です。\n操作体験: veil-warden tui --dry-run").wrap(Wrap { trim: false }), inner);
+    }
     let rows =
         state.backend.rules.iter().map(|(key, id)| {
             Row::new([id.to_string(), format!("{} TCP", policy::destination(key))])
@@ -308,14 +386,10 @@ pub fn draw(frame: &mut Frame, state: &State, ui_dropped: u64) {
 #[cfg(target_os = "linux")]
 pub mod runtime {
     use super::*;
-    use crossterm::{
-        cursor::{Hide, Show},
-        event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
-        execute,
-        terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
-    };
+    use crate::terminal_session::Session;
+    use crossterm::event::{self, Event};
     use std::{
-        io::{self, IsTerminal},
+        io,
         sync::{
             Arc, Mutex,
             atomic::{AtomicBool, AtomicU64, Ordering},
@@ -324,54 +398,6 @@ pub mod runtime {
         thread,
         time::Duration,
     };
-    pub struct Session {
-        raw: bool,
-        alternate: bool,
-    }
-    impl Session {
-        fn enter() -> io::Result<Self> {
-            if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
-                return Err(io::Error::other(
-                    "--tui requires interactive stdin/stdout (SSH: use -t)",
-                ));
-            }
-            let mut this = Self {
-                raw: false,
-                alternate: false,
-            };
-            terminal::enable_raw_mode()?;
-            this.raw = true;
-            this.alternate = true;
-            execute!(io::stdout(), EnterAlternateScreen, Hide)?;
-            Ok(this)
-        }
-        fn restore(&mut self) -> io::Result<()> {
-            let screen = if self.alternate {
-                let result = execute!(io::stdout(), Show, LeaveAlternateScreen);
-                if result.is_ok() {
-                    self.alternate = false;
-                }
-                result
-            } else {
-                Ok(())
-            };
-            let raw = if self.raw {
-                let result = terminal::disable_raw_mode();
-                if result.is_ok() {
-                    self.raw = false;
-                }
-                result
-            } else {
-                Ok(())
-            };
-            screen.and(raw)
-        }
-    }
-    impl Drop for Session {
-        fn drop(&mut self) {
-            let _ = self.restore();
-        }
-    }
     pub struct Ui {
         pub shared: Arc<Mutex<BackendState>>,
         pub rows: SyncSender<EventRow>,
@@ -437,38 +463,10 @@ pub mod runtime {
                         if event::poll(Duration::from_millis(50))?
                             && let Event::Key(key) = event::read()?
                         {
-                            if key.kind != KeyEventKind::Press {
-                                continue;
-                            }
-                            match key.code {
-                                KeyCode::Char('q') => stop.store(true, Ordering::Relaxed),
-                                KeyCode::Char('c')
-                                    if key.modifiers.contains(KeyModifiers::CONTROL) =>
-                                {
-                                    stop.store(true, Ordering::Relaxed)
-                                }
-                                KeyCode::Tab => {
-                                    state.focus = if state.focus == Focus::Events {
-                                        Focus::Rules
-                                    } else {
-                                        Focus::Events
-                                    }
-                                }
-                                KeyCode::Up | KeyCode::Char('k') => state.move_selection(false),
-                                KeyCode::Down | KeyCode::Char('j') => state.move_selection(true),
-                                KeyCode::Char('b') => state.prepare(false),
-                                KeyCode::Char('d') => state.prepare(true),
-                                KeyCode::Esc => {
-                                    state.pending = None;
-                                    state.status = "操作を取り消しました".into();
-                                }
-                                KeyCode::Enter => {
-                                    if let Some(cmd) = state.confirm()
-                                        && commands.try_send(cmd).is_err()
-                                    {
-                                        state.busy = false;
-                                        state.status = "更新失敗: 制御経路が利用できません".into();
-                                    }
+                            match state.key(key) {
+                                Input::Quit => stop.store(true, Ordering::Relaxed),
+                                Input::Command(cmd) if commands.try_send(cmd).is_err() => {
+                                    state.command_failed()
                                 }
                                 _ => {}
                             }
@@ -548,6 +546,8 @@ pub mod runtime {
     #[cfg(test)]
     mod tests {
         use super::*;
+        use crossterm::terminal;
+        use std::io::IsTerminal;
         struct BrokenWriter;
         impl io::Write for BrokenWriter {
             fn write(&mut self, _: &[u8]) -> io::Result<usize> {

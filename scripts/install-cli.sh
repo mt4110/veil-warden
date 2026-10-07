@@ -13,10 +13,18 @@ mkdir -p "$repo/target/host-cli" "$bin"
 export WARDEN_REPO="$repo" WARDEN_NIX="$nix_path"
 nix --extra-experimental-features 'nix-command flakes' develop "path:$repo" --command \
   rustc --edition=2024 -D warnings -O "$repo/tools/host-cli/main.rs" -o "$repo/target/host-cli/veil-warden"
+# Build the portable renderer using existing workspace dependencies.
+nix --extra-experimental-features 'nix-command flakes' develop "path:$repo" --command \
+  cargo build --locked -p veil-warden --bin veil-warden
+cp "$repo/target/debug/veil-warden" "$repo/target/host-cli/veil-warden-preview"
 # Preserve an existing installation before replacing it; no files are deleted.
 if [[ -e "$bin/veil-warden" ]]; then
   cp -p "$bin/veil-warden" "$bin/veil-warden.backup-$(date +%Y%m%dT%H%M%S)-$$"
 fi
+if [[ -e "$bin/veil-warden-preview" ]]; then
+  cp -p "$bin/veil-warden-preview" "$bin/veil-warden-preview.backup-$(date +%Y%m%dT%H%M%S)-$$"
+fi
+cp "$repo/target/host-cli/veil-warden-preview" "$bin/veil-warden-preview"
 cp "$repo/target/host-cli/veil-warden" "$bin/veil-warden"
 python3 - <<'PY'
 from pathlib import Path

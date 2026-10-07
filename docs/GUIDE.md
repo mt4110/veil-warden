@@ -4,7 +4,7 @@
 
 Apple Silicon Mac と既存の Nix を使います。初回の取得にはインターネット、数 GiB 程度の空き容量が必要です。Nix が未導入なら、公式の導入方法を確認してから導入してください。このプロジェクトのスクリプトはホスト権限を拡大しません。
 
-通常の起動は README の「どこからでも実行する」を使います。初回の `./scripts/install-cli.sh` 後、新しいターミナルから `veil-warden` で実行できます。下記は個別スクリプトを使う開発・検証用の手順です。mise は使用しません。
+初回は README の「クイックスタート」を使います。`./scripts/install-cli.sh` 後、新しいターミナルから `veil-warden` でMacの模擬TUIを開けます。VMの実監視は `veil-warden tui` です。[利用場面と操作体験](USE_CASES.md)で両者の違いを確認してください。下記は個別スクリプトを使う開発・検証用の手順です。mise は使用しません。
 
 ```sh
 nix develop "path:$PWD"
@@ -86,6 +86,8 @@ Apple Siliconでは、構築用VMと専用VMを起動し、ホストのリポジ
 
 ビルドスクリプトは明示したソースだけを構築用VMへコピーします。成果物は状態ディレクトリの `m1/build-日時-PID`、受け入れ試験のJSONは `artifacts/m1/acceptance-日時-PID.json` に保持します。テスト用コピーは専用VMの `/home/warden/warden-m1-日時-PID` に置きます。既存のホスト成果物を削除しません。
 
+構築用VMのCargoキャッシュは `/home/builder/.cache/veil-warden-build/target` を共用します。日時ごとのソースディレクトリ内には `target` を作りません。依存のコンパイル結果を再利用し、Nixへのソース取り込みに中間成果物が混ざることを避けます。ビルド全体をロックし、完了した3成果物だけを各ソースの `output` にコピーしてからMacへ取得します。ソース・成果物・検証記録は保存するため、保存量が無制限に増えない保証ではありません。容量確認と整理は[構築VMの保守](BUILDER_MAINTENANCE.md)を参照してください。
+
 受け入れ試験はIPv4/IPv6で8個ずつ合成UDPデータグラムを送り、受信・カウント増加を確認します。対象外の同じ通信ではカウンタが増えないこと、通常終了・SIGTERM・SIGKILLで自作リンクだけが消えること、管理SSHが維持されることも確認します。
 
 CLIを手動で使う場合、転送先のパスを試験スクリプトから確認して、専用VM内で実行します。
@@ -99,7 +101,7 @@ sudo /home/warden/warden-m1-日時-PID/veil-warden \
 
 `--samples 0`（既定）はSIGINT/SIGTERMまで継続します。対象cgroupは固定で、変更する引数はありません。クライアントは `systemd-run --slice=warden-test.slice` で所属してからソケットを作ります。CLI自体は対象sliceの外で実行します。ヘッダやペイロードの収集・書き換え、宛先別集計は行いません。
 
-Linuxでソースからビルドする場合は `./scripts/build-counter.sh` を使います。BPFオブジェクトは `target/bpfel-unknown-none/release/veil-warden-ebpf`、CLIは `target/release/veil-warden` です。自分でビルドしたオブジェクトだけをロードしてください。任意のオブジェクトの安全性をCLIが証明する機能はありません。
+Linuxでソースからビルドする場合は `./scripts/build-counter.sh` を使います。完成したCLI・BPF・部分attach試験用オブジェクトは `artifacts/build/` にコピーします。`WARDEN_BUILD_OUTPUT` で出力先を変更できます。キャッシュは既定で `${XDG_CACHE_HOME:-$HOME/.cache}/veil-warden-build/target`、`CARGO_TARGET_DIR` で変更できますがソースディレクトリ内は拒否します。自分でビルドしたオブジェクトだけをロードしてください。任意のオブジェクトの安全性をCLIが証明する機能はありません。
 
 起動時の読み込み・Map・attach失敗はエラー終了します。既存のsystemdファイアウォールと共存するcgroup BPF linkを使い、既存programを上書き・解除しません。`/run/veil-warden-counter.lock` のFDロックで同じCLIの二重起動を拒否します。ロックファイルが存在していても、終了後はFDロックが解放されて再起動できます。
 
@@ -170,6 +172,8 @@ sudo /home/warden/warden-m3-日時-PID/veil-warden policy remove ::1 8443
 制御socketはabstract Unix socketでファイルを作らず、root以外の要求に応答しません。コマンド側も接続相手のUID 0を確認し、非rootの偽サーバーを拒否します。要求は256 byte、通信は2秒で打ち切ります。制御要求の処理中はログ受信が遅れ得ますが、kernelの拒否判断は待ちません。接続先が応答しない場合やCLIが停止した場合は制御コマンドも非ゼロで終了します。応答喪失時に操作結果を推測せず、`policy list` で状態を再確認してください。
 
 ## M4 TUIの実行
+
+Macで操作だけを試す場合は `veil-warden tui --dry-run` を使います。`n`で接続再試行を模擬します。実通信・実拒否は行いません。実端末による模擬TUIの回帰試験はApple Silicon Macの `scripts/check.sh` に含まれ、`python3 tests/host/test_dry_run.py ~/.local/bin/veil-warden` でも実行できます。以下はVM内の実監視です。
 
 構築用・専用VMを起動し、最新の成果物をビルドした後、実端末からホストで実行します。
 
