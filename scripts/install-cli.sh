@@ -13,9 +13,9 @@ mkdir -p "$repo/target/host-cli" "$bin"
 export WARDEN_REPO="$repo" WARDEN_NIX="$nix_path"
 nix --extra-experimental-features 'nix-command flakes' develop "path:$repo" --command \
   rustc --edition=2024 -D warnings -O "$repo/tools/host-cli/main.rs" -o "$repo/target/host-cli/veil-warden"
-# Build the portable renderer using existing workspace dependencies.
+# Keep the build output and copy source aligned, including with CARGO_TARGET_DIR set.
 nix --extra-experimental-features 'nix-command flakes' develop "path:$repo" --command \
-  cargo build --locked -p veil-warden --bin veil-warden
+  cargo build --locked -p veil-warden --bin veil-warden --target-dir "$repo/target"
 cp "$repo/target/debug/veil-warden" "$repo/target/host-cli/veil-warden-preview"
 # Preserve an existing installation before replacing it; no files are deleted.
 if [[ -e "$bin/veil-warden" ]]; then

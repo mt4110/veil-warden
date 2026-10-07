@@ -148,6 +148,11 @@ def render(screen, caption):
 
 def main():
     binary = sys.argv[1] if len(sys.argv) > 1 else str(Path.home() / '.local/bin/veil-warden')
+    output = ROOT / 'docs/images/dry-run-tui.gif'
+    if output.exists(): raise RuntimeError('Output exists; preserve it before recording again')
+    artifacts = ROOT / 'artifacts/tui-recording'
+    output.parent.mkdir(parents=True, exist_ok=True)
+    artifacts.mkdir(parents=True, exist_ok=True)
     # Preserve the terminal's normal colors rather than Codex's log-oriented override.
     os.environ.pop('NO_COLOR', None)
     recording = Recording(binary)
@@ -174,15 +179,13 @@ def main():
         recording.process.wait(timeout=5)
     finally:
         recording.close()
-    output = ROOT / 'docs/images/dry-run-tui.gif'
-    if output.exists(): raise RuntimeError('Output exists; preserve it before recording again')
     frames[0].save(output, save_all=True, append_images=frames[1:], duration=durations, loop=0, optimize=True, disposal=2)
-    cast = ROOT / 'artifacts/tui-recording/dry-run.cast'
+    cast = artifacts / 'dry-run.cast'
     header = {'version': 2, 'width': 120, 'height': 24, 'title': 'veil-warden dry-run tutorial'}
     # The cast keeps original output timing; GIF holds each key state for reading.
     cast.write_text(json.dumps(header) + '\n' + '\n'.join(json.dumps(event, ensure_ascii=False) for event in recording.events) + '\n')
-    frames[3].save(ROOT / 'artifacts/tui-recording/denied.png')
-    frames[-1].save(ROOT / 'artifacts/tui-recording/restored.png')
+    frames[3].save(artifacts / 'denied.png')
+    frames[-1].save(artifacts / 'restored.png')
     print(json.dumps({'gif': str(output), 'frames': len(frames), 'duration_ms': sum(durations), 'bytes': output.stat().st_size, 'cast': str(cast)}))
 
 
