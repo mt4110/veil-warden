@@ -11,6 +11,12 @@ JSON/observeサービス→検証付きCLI+BPF配布→必要なpolicy管理の�
 初回配布前にSBOM・帰属・署名と検証を揃え、packageのインストールだけでは起動/attach/enforceしない案です。
 metricsは要求次第、DaemonSetと本書の保持更新はW5の条件付き候補で、今回実装は開始しません。
 
+## 先行実装との境界
+
+[Nixパッケージと非ロード診断](NIX_PREFLIGHT.md)を実装し、[ARM64 Linuxで実ビルドと診断](validation/nix-preflight-20261022/README.md)を確認しました。
+一般サーバー向けloader、サービス登録、監視開始、停止・撤去は未実装です。
+本書のsystemd/DaemonSet/保持更新案が実装済みになったことは意味しません。
+
 ## 目的と採否
 
 検討する目的は「Linux上の一つの指定サービスについて、新規TCP接続の宛先ルールを、管理者が確認して更新できること」です。AWS/GCPは配置先の候補で、クラウド全体を保護する機能やB2B製品の完成を意味しません。

@@ -1,0 +1,5 @@
+veil-warden diagnose --cgroup /slice/app.service [--lang ja|en]
+Read-only: no BPF load or configuration changes.
+読み取り専用：BPFロード・設定変更なし。
+Exit: 1=blocked / 不適合, 2=invalid input / 入力不正, 3=unverified / 未確認.
+No deployment-ready result is emitted / 導入可能とは判定しません。

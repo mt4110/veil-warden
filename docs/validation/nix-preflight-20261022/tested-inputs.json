@@ -1,0 +1,21 @@
+{
+  "flake.nix": "855cf612f2b7767d5b3b0e513c3240a029e7035bdd52f21dbd33bc6315f0bc22",
+  "config/bpf-stdlib-Cargo.lock": "c2074fc4e332da44180c8b7366f53140258bc76007478973feb24adc0b1ba279",
+  "infra/nix/package.nix": "a81b6bc37d8f16b9f54a2f9f653b762be1e60078db9c9cd30c5829e4161af4b7",
+  "crates/veil-warden/src/diagnose.rs": "cf6f4c41f51482c7afcf69baedc94dc32a574645460dcfa1ba0905c3b862567a",
+  "crates/veil-warden/src/main.rs": "498f34088601e6e477e9bfe07ca4c6e16598bfcca8da0eb7ef64e9c9549ab43d",
+  "crates/veil-warden/src/cli.rs": "69492992b7210782250396f8f09a5506040d48e17242dc7ec9b1645bc3a30c12",
+  "scripts/check.sh": "26d113fc73d78cd0e9deefd9f5a6e763c9ca4f410cb677e8e7f40f8331a97211",
+  "scripts/verify-package.py": "28a8c433bcc759d7e8cb263a493ad4c2a73bcd3828492e4d1b35267743d826d6",
+  "tests/host/test_diagnose.py": "461307efcdf7a7888d34e004096cea49a55bcb691dbb51cc61c0525bc17a0bc3",
+  "tests/unit/test_package_manifest.py": "44e604bf660a20b2ca4f3fd5a1adeb93a68beefb0e6516835919ac165471e8da",
+  "Cargo.toml": "33978edfe9502f450fdbb2425999ad8e3e1a28243c30d6c74f4908b4bec2e48d",
+  "Cargo.lock": "a84eeabf91eeb05ce328a6025f4574a1c0f50fad0aa3767c2259f1cdff4eb7e1",
+  "flake.lock": "eed89197e73c000eaf6c04034f2b83033de2c65d362522c766bf3860fdf38e0d",
+  "rust-toolchain.toml": "97aab3493c1fb14fe9a21c760433577f434714f5725bbb176e67048dde581afe",
+  ".cargo/config.toml": "d8ebe441a98c16cbcb006acaecc65c7ad05fa4b8bd57d4c6be4e5523627191b0",
+  "crates/veil-warden-common/src/lib.rs": "79c174cf6c31c1fb1dacc0b960c5a32f9585e8991956f11c20d98e57b3c20569",
+  "crates/veil-warden-ebpf/src/connect.rs": "87e3456abda0af502c9859a2348701dce59c0dbc6f86ed049f7eb1df59411fb2",
+  "crates/veil-warden-ebpf/src/main.rs": "99851b441356264ea47023af7d051cb46914d5ce448b92b18bb70ebb75f834c9",
+  "crates/veil-warden-ebpf/src/counter.rs": "1c40efbefd1f16c8d352f2489746abf297f2cc8e0e9d20969a06906dcb3fe41f"
+}

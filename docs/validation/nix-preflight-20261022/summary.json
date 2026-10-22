@@ -1,0 +1,29 @@
+{
+  "status": "linux_aarch64_build_and_nonloading_diagnosis_passed_builder_stopped",
+  "package": "/nix/store/l7d98a8d4xc49b4z3bidm5jjn168vagi-veil-warden-0.1.0",
+  "system": "aarch64-linux",
+  "kernel": "6.8.0-117-generic",
+  "linux_cli_tests": {
+    "passed": 24,
+    "ignored": 2,
+    "failed": 0
+  },
+  "diagnose_cli_tests": 3,
+  "manifest_regression_tests": 4,
+  "traced_cli_cases": 4,
+  "bpf_syscalls_in_traced_cases": 0,
+  "write_opens_in_traced_cases": 0,
+  "builder_stopped": true,
+  "container_stopped": true,
+  "other_colima_states_preserved": true,
+  "source_files_byte_identical": 111,
+  "bpf_loaded": false,
+  "server_installed": false,
+  "deployment_ready": false,
+  "x86_64_build_and_runtime": "not_run",
+  "tested_snapshot": "Pre-PR working snapshot; runtime/build files match the hashes in tested-inputs.json. PR documentation was updated afterward.",
+  "linux_cli_ignored_reasons": [
+    "process-wide resource limits need an isolated VM test process",
+    "terminal restoration test requires a real PTY"
+  ]
+}

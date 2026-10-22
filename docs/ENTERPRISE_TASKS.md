@@ -3,7 +3,9 @@
 [設計](ENTERPRISE_READINESS.md) / [マイルストーン](../milestones/enterprise/README.md)
 
 2026-10-22。以下はローカルの計画IDで、GitHub Issue番号ではない。
-今回の承認は文書更新だけ。全実装タスクは未着手、W0以降の実行・公開・試用は別途判断する。
+個別承認したNixパッケージと読み取り専用診断を先行実装し、ARM64 Linuxで非ロード検証しました。
+これはW2-1の一部の技術確認です。下表の段階全体、W0/W1、署名配布・導入・試用は未完了です。
+[手順](NIX_PREFLIGHT.md) / [証拠と未確認範囲](validation/nix-preflight-20261022/README.md)。
 Keeper Cのタスク・証拠は混ぜない。M0〜M5の完了をこれらへ繰り上げない。
 
 | ID | 段階 | 依存 | 作業と完了条件 |
@@ -15,7 +17,7 @@ Keeper Cのタスク・証拠は混ぜない。M0〜M5の完了をこれらへ�
 | W1-2 | M6前半 | W1-1 | [ ] 出力詰まり・broken pipe・欠落・数値境界・worker終了を検証。接続判断と表示を分離し、有限期限と終了状態を証明 |
 | W1-3 | M6後半 | W1-2 | [ ] 一つのscopeを対象に、既定disabled/observeのsystemd serviceを作る。必要権限・両link成立後ready・scope不適合拒否を確認 |
 | W1-4 | M6後半 | W1-3、VM試験承認 | [ ] 新規VMで開始/停止/再起動/二重起動/読取失敗/SIGTERM/SIGKILLを確認。管理通信維持、秘密非出力、再起動loopなし、停止で解除を記録 |
-| W2-1 | 配布 | W1-4 | [ ] 一つの対応OS/CPUでmusl/glibc候補を比較。実ELFの動的依存と有効featuresを調べ、CLI+BPF/ABI/版の一組を固定 |
+| W2-1 | 配布 | W1-4 | [ ] 一つの対応OS/CPUでmusl/glibc候補を比較。実ELFの動的依存と有効featuresを調べ、CLI+BPF/ABI/版の一組を固定。NixによるARM64の組み合わせ固定・hash/ELF検証は先行実装済み。musl/glibc比較、運用対応の認定は未完 |
 | W2-2 | 配布前信頼 | W2-1 | [ ] 同一digestへSBOM・帰属・元commit/workflow/toolchain/provenanceを対応付け、スキャン結果と未解消事項をレビュー |
 | W2-3 | 配布前信頼 | W2-2 | [ ] 署名identity/issuerとdigestの検証を用意。改変、別workflow、欠落署名を拒否。公開は別途承認 |
 | W2-4 | 限定配布 | W2-3 | [ ] 対象上でcargo/Nixなしに取得・検証・診断・observe・停止。初回時間、失敗時非適用、削除/更新/旧版復帰を記録 |

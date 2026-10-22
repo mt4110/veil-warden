@@ -2,6 +2,7 @@
 mod cli;
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 mod decode;
+mod diagnose;
 mod dry_run;
 #[cfg(target_os = "linux")]
 mod events;
@@ -20,6 +21,9 @@ mod terminal_session;
 mod tui;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().is_some_and(|arg| arg == "diagnose") {
+        std::process::exit(diagnose::run(&args[1..]));
+    }
     if args == ["--dry-run"] {
         return dry_run::run();
     }

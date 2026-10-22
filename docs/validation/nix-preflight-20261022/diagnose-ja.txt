@@ -1,0 +1,11 @@
+schema=veil-warden-preflight-v1
+read_only=true
+bpf_loaded=false
+apply_supported=false
+deployment_ready=false
+platform=candidate Linux x86_64/aarch64が必要。実動作の対応認定ではありません
+kernel_version=candidate バージョン下限のみ。BPF設定・権限の適合性は未確認です
+cgroup_v2=candidate 読み取りによる目印の確認のみ。mountやcontrollerは変更しません
+target_directory=unknown 既存の非symlinkディレクトリ。サービスとの対応・寿命は未確認です
+loader_scope=blocked 現行loaderは専用sandboxのhostnameと固定テストcgroupのみ許可します
+runtime_acceptance=unknown BPF未ロード：機能・権限・LSM・既存attach・停止復帰は未確認です

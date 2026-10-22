@@ -53,6 +53,7 @@ pub fn parse(
                 reader_delay = args.next().ok_or("missing reader delay")?.parse()?
             }
             "--help" | "-h" => {
+                println!("Read-only preflight / 読み取り専用診断: veil-warden diagnose --help");
                 println!(
                     "veil-warden --object PATH [--interval-ms 10..60000] [--samples N]\nStandalone --dry-run: in-memory TUI tutorial (no BPF, sockets, or real rules).\nDefault: egress SKB counter. Add connect for TCP connect attempts (not connection success).\nconnect: [--duration-ms 0..600000] [--reader-delay-ms 0..1000 diagnostic]\nDefault observe; connect [--tui] [--enforce] [--deny IP PORT].\nconnect: [--scan-argv PID:START_TICKS] one explicit test-process snapshot; warning only.\nRuntime: policy list | add IP PORT | remove IP PORT; fixed VM test slice."
                 );

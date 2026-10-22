@@ -17,9 +17,10 @@ if [[ "$(uname -s)" == Darwin && "$(uname -m)" == arm64 ]]; then
     --target aarch64-apple-darwin --target-dir "$PWD/target"
   cp target/aarch64-apple-darwin/debug/veil-warden target/host-cli/veil-warden-preview
   python3 tests/host/test_dry_run.py target/host-cli/veil-warden
+  python3 tests/host/test_diagnose.py target/host-cli/veil-warden-preview
 fi
 python3 -m unittest discover -s tests/unit -v
 markdownlint-cli2
-nixfmt --check flake.nix infra/nixos/vm.nix
+nixfmt --check flake.nix infra/nixos/vm.nix infra/nix/package.nix
 shellcheck scripts/*.sh
 nix flake check "path:$PWD" --no-build

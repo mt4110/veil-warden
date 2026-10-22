@@ -60,11 +60,33 @@ VMはmacOSのlaunchdでバックグラウンド実行します。ターミナル
 
 既存の手動起動VMは再利用し、`stop`では停止しません。元のターミナルで停止してください。VMログは状態ディレクトリの `host-cli/builder.log` と `host-cli/sandbox.log` です。VMごとのメモリ上限は4 GiBです。リポジトリを移動した場合は再インストールします。既存のCLIはバックアップしてから更新し、ログ・ディスクは削除しません。
 
+## Nixパッケージと導入前診断（BPFロードなし）
+
+CLIと対応するeBPFオブジェクトを一組にするNixパッケージを追加しました。
+**ARM64 Linuxでビルド・整合性検証・非ロード診断を確認済み**です。
+これは開発用パッケージであり、一般サーバーへの監視開始・systemd登録・署名付き配布はまだ提供しません。
+
+既存のLinux環境にNixがある場合、リポジトリのルートで次を実行します。
+
+```sh
+nix --extra-experimental-features 'nix-command flakes' build .#veil-warden --option builders ''
+./result/bin/veil-warden diagnose --cgroup /system.slice/example.service --lang ja
+```
+
+`example.service`は調べたいサービスのcgroupパスに置き換えます。
+診断は設定を変更せず、BPFもロードしません。一般サーバーでは専用VM制限による`blocked`と終了コード1が期待されます。
+部分的な`candidate`を全体の適合判定にせず、`apply_supported=false`と`deployment_ready=false`を維持します。
+`diagnose --lang en`、`diagnose --help`、`diagnose -h`にも対応します。
+既存のMac用ランチャーとは別のCLIなので、上記のパスを明示してください。Mac上では`cargo run --locked -p veil-warden -- diagnose --help`でヘルプを確認できます。
+
+[パッケージと診断の手順](docs/NIX_PREFLIGHT.md) / [ARM64 Linux検証記録と限界](docs/validation/nix-preflight-20261022/README.md)
+を参照してください。x86_64の実ビルド・実行、BPFロード・監視・停止復帰の追加検証は未実施です。
+
 ## クラウド導入・稼働中サーバーでの更新
 
 単体Linuxサーバーへのsystemd導入、将来のDaemonSet配置、リンクとMapの保持、更新失敗時の復帰を[設計候補](docs/DEPLOYMENT.md)として整理しています。いずれも未実装・未検証です。無停止更新、ログ欠落ゼロ、本番保護を保証する機能ではありません。具体的な対象サービスと既存手段の不足が確認できるまで、実装は広げません。
 
-企業での限定試用に向けた候補は、[実装との照合・設計](docs/ENTERPRISE_READINESS.md)、[タスク](docs/ENTERPRISE_TASKS.md)、[段階W0〜W5](milestones/enterprise/README.md)に整理しています。JSON/observeサービスと検証付き配布を先に評価し、metrics・DaemonSet・保持更新は必要性に応じて選びます。今回は文書計画のみで、M6の保留を解除していません。
+企業での限定試用に向けた候補は、[実装との照合・設計](docs/ENTERPRISE_READINESS.md)、[タスク](docs/ENTERPRISE_TASKS.md)、[段階W0〜W5](milestones/enterprise/README.md)に整理しています。JSON/observeサービスと検証付き配布を先に評価し、metrics・DaemonSet・保持更新は必要性に応じて選びます。Nixパッケージと非ロード診断の先行実装は追加しましたが、M6のサービス化は保留のままです。
 
 ## 手動でVMを準備する場合（開発者向け）
 

@@ -8,6 +8,8 @@
 
 | 文書 | 内容 |
 | --- | --- |
+| [Nixパッケージと導入前診断](NIX_PREFLIGHT.md) | CLI+BPFの一体パッケージ、日英の非ロード診断、結果の読み方 |
+| [ARM64 Linuxパッケージ検証](validation/nix-preflight-20261022/README.md) | 実ビルド・整合性・診断・syscall追跡、未確認範囲 |
 | [利用場面と模擬TUI](USE_CASES.md) | 何に使うか、Macのdry-run、操作例、Wireshark等との使い分け |
 | [実行ガイド](GUIDE.md) | Nix環境、VMの構築・起動、CLI/TUI、停止・復帰、トラブル対応 |
 | [構築VMの保守](BUILDER_MAINTENANCE.md) | QEMU/HVF、ディスク容量、共通ビルドキャッシュ、整理と復旧の方針 |
@@ -47,7 +49,7 @@ Cloudflareのアカウント登録・組織参加・デプロイは不要です�
 | 文書 | 内容 |
 | --- | --- |
 | [ロードマップ](ROADMAP.md) | 完了した範囲、現在の終了点、保留している作業 |
-| [企業向け候補のタスク](ENTERPRISE_TASKS.md) | W0〜W5の依存と受け入れ条件。全実装未着手 |
+| [企業向け候補のタスク](ENTERPRISE_TASKS.md) | W0〜W5の依存と受け入れ条件。パッケージ・診断の先行実装と残るゲート |
 | [企業向け候補の段階](../milestones/enterprise/README.md) | 既存M6との対応、配布前ゲート、継続・中止条件 |
 | [研究テーマ](RESEARCH.md) | 検証する問い、最小の試験、終了条件、成果への接続 |
 | [マイルストーン一覧](../milestones/README.md) | M0〜M6の状態と各段階への入口 |
