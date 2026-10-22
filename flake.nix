@@ -86,28 +86,36 @@
     in
     {
       nixosConfigurations.sandbox = vm;
-      packages = eachSystem (pkgs: {
-        sandbox-vm = (mkVm pkgs.stdenv.hostPlatform.system).config.system.build.vm;
-        sandbox-bundle = bundle;
-        default = pkgs.rustPlatform.buildRustPackage {
-          pname = "veil-warden-architecture-guard";
-          version = "0.0.0";
-          src = cleanSource;
-          cargoLock = {
-            lockFile = ./Cargo.lock;
-            outputHashes."veil-config-0.17.0" = "sha256-Kcdik2+N8Tqw2j3yhrMcuE1CrAqutu9pmmXMn9HGRmI=";
+      packages = eachSystem (
+        pkgs:
+        {
+          sandbox-vm = (mkVm pkgs.stdenv.hostPlatform.system).config.system.build.vm;
+          sandbox-bundle = bundle;
+          default = pkgs.rustPlatform.buildRustPackage {
+            pname = "veil-warden-architecture-guard";
+            version = "0.0.0";
+            src = cleanSource;
+            cargoLock = {
+              lockFile = ./Cargo.lock;
+              outputHashes."veil-config-0.17.0" = "sha256-Kcdik2+N8Tqw2j3yhrMcuE1CrAqutu9pmmXMn9HGRmI=";
+            };
+            cargoBuildFlags = [
+              "-p"
+              "architecture-guard"
+            ];
+            cargoTestFlags = [
+              "-p"
+              "architecture-guard"
+            ];
+            doCheck = true;
           };
-          cargoBuildFlags = [
-            "-p"
-            "architecture-guard"
-          ];
-          cargoTestFlags = [
-            "-p"
-            "architecture-guard"
-          ];
-          doCheck = true;
-        };
-      });
+        }
+        // import ./infra/nix/package.nix {
+          inherit pkgs;
+          src = cleanSource;
+          bpfToolchain = bpfToolchain pkgs.stdenv.hostPlatform.system;
+        }
+      );
       devShells = eachSystem (pkgs: {
         bpf = pkgs.mkShell {
           packages = [

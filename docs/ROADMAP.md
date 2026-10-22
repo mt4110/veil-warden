@@ -37,7 +37,7 @@ LinuxのネットワークフックをRustで扱い、限定されたVM内の観
 
 配布・監視連携・宣言的設定・供給元の検証について、[現状照合と設計](ENTERPRISE_READINESS.md)、
 [タスクと受け入れ条件](ENTERPRISE_TASKS.md)、[段階W0〜W5](../milestones/enterprise/README.md)を追加しました。
-今回の承認は文書更新だけで、M6の保留を解除していません。
+個別承認によりNixパッケージと読み取り専用診断を先行実装しました。[ARM64 Linux検証記録](validation/nix-preflight-20261022/README.md)の範囲で、BPF未ロード・一般サーバー導入不可です。M6の保留は解除していません。
 
 採否と対象固定（W0）→JSON/observeサービス（W1=既存M6）→検証付き配布（W2）を先に評価します。
 SBOM・署名は最初のバイナリ試用配布前の条件とし、v1.0まで後回しにしません。

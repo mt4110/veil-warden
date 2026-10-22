@@ -1,0 +1,23 @@
+12932 execve("/nix/store/l7d98a8d4xc49b4z3bidm5jjn168vagi-veil-warden-0.1.0/bin/veil-warden", ["/nix/store/l7d98a8d4xc49b4z3bidm"..., "diagnose", "--cgroup", "/system.slice/example.service", "--lang", "en"], 0xffffc53477c0 /* 11 vars */) = 0
+12932 faccessat(AT_FDCWD, "/etc/ld-nix.so.preload", R_OK) = -1 ENOENT (No such file or directory)
+12932 openat(AT_FDCWD, "/nix/store/925pp1xa98cr78dm56gbdwlxi35z5cm3-openssl-3.6.4/lib/libssl.so.3", O_RDONLY|O_CLOEXEC) = 3
+12932 openat(AT_FDCWD, "/nix/store/925pp1xa98cr78dm56gbdwlxi35z5cm3-openssl-3.6.4/lib/libcrypto.so.3", O_RDONLY|O_CLOEXEC) = 3
+12932 openat(AT_FDCWD, "/nix/store/925pp1xa98cr78dm56gbdwlxi35z5cm3-openssl-3.6.4/lib/libgcc_s.so.1", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+12932 openat(AT_FDCWD, "/nix/store/shf3m6di7sgrl1c9pk3rdf0zlw9ml671-glibc-2.42-84/lib/libgcc_s.so.1", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+12932 newfstatat(AT_FDCWD, "/nix/store/shf3m6di7sgrl1c9pk3rdf0zlw9ml671-glibc-2.42-84/lib/", {st_mode=S_IFDIR|0555, st_size=4096, ...}, 0) = 0
+12932 openat(AT_FDCWD, "/nix/store/bjk38qs79irxsjl0557nckcn014qld31-gcc-15.3.0-lib/lib/libgcc_s.so.1", O_RDONLY|O_CLOEXEC) = 3
+12932 openat(AT_FDCWD, "/nix/store/925pp1xa98cr78dm56gbdwlxi35z5cm3-openssl-3.6.4/lib/libm.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+12932 openat(AT_FDCWD, "/nix/store/shf3m6di7sgrl1c9pk3rdf0zlw9ml671-glibc-2.42-84/lib/libm.so.6", O_RDONLY|O_CLOEXEC) = 3
+12932 openat(AT_FDCWD, "/nix/store/925pp1xa98cr78dm56gbdwlxi35z5cm3-openssl-3.6.4/lib/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+12932 openat(AT_FDCWD, "/nix/store/shf3m6di7sgrl1c9pk3rdf0zlw9ml671-glibc-2.42-84/lib/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
+12932 openat(AT_FDCWD, "/nix/store/925pp1xa98cr78dm56gbdwlxi35z5cm3-openssl-3.6.4/lib/libdl.so.2", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+12932 openat(AT_FDCWD, "/nix/store/shf3m6di7sgrl1c9pk3rdf0zlw9ml671-glibc-2.42-84/lib/libdl.so.2", O_RDONLY|O_CLOEXEC) = 3
+12932 openat(AT_FDCWD, "/nix/store/925pp1xa98cr78dm56gbdwlxi35z5cm3-openssl-3.6.4/lib/libpthread.so.0", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+12932 openat(AT_FDCWD, "/nix/store/shf3m6di7sgrl1c9pk3rdf0zlw9ml671-glibc-2.42-84/lib/libpthread.so.0", O_RDONLY|O_CLOEXEC) = 3
+12932 openat(AT_FDCWD, "/proc/self/maps", O_RDONLY|O_CLOEXEC) = 3
+12932 openat(AT_FDCWD, "/proc/sys/kernel/osrelease", O_RDONLY|O_CLOEXEC) = 3
+12932 openat(AT_FDCWD, "/etc/hostname", O_RDONLY|O_CLOEXEC) = 3
+12932 openat(AT_FDCWD, "/sys/fs/cgroup/cgroup.controllers", O_RDONLY|O_CLOEXEC) = 3
+12932 statx(AT_FDCWD, "/sys/fs/cgroup", AT_STATX_SYNC_AS_STAT|AT_SYMLINK_NOFOLLOW, STATX_ALL, {stx_mask=STATX_BASIC_STATS|STATX_MNT_ID, stx_attributes=STATX_ATTR_MOUNT_ROOT, stx_mode=S_IFDIR|0755, stx_size=0, ...}) = 0
+12932 statx(AT_FDCWD, "/sys/fs/cgroup/system.slice", AT_STATX_SYNC_AS_STAT|AT_SYMLINK_NOFOLLOW, STATX_ALL, 0xffffef6523a0) = -1 ENOENT (No such file or directory)
+12932 +++ exited with 1 +++

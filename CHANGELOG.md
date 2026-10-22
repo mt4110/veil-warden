@@ -8,6 +8,10 @@
 
 ### 実装済みの機能
 
+- Nixの名前付きLinuxパッケージにCLIと対応BPFを同梱し、CPU/ABI/SHA-256のmanifestと整合性検証を追加。
+- `diagnose --cgroup PATH --lang ja|en`でBPFをロードせずに事前診断。設定変更なし、`-h`/`--help`対応、不適合と未確認を区別。専用VM制限は維持。
+- [ARM64 Linuxでパッケージの実ビルド・診断・非書込を検証](docs/validation/nix-preflight-20261022/README.md)。一般サーバー運用とx86_64の実行証拠にはしない。
+
 - Linuxビルドの中間成果物をソース外の共通キャッシュに集約し、完了した成果物だけを世代別に保存。並行ビルドはロックで拒否。
 - Mac用の模擬TUI：コマンド省略時と `tui --dry-run` で架空イベントを表示し、拒否・解除・再試行を体験。実通信・VM起動なし。実監視は `tui` で起動。
 

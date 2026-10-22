@@ -1,0 +1,11 @@
+schema=veil-warden-preflight-v1
+read_only=true
+bpf_loaded=false
+apply_supported=false
+deployment_ready=false
+platform=candidate Linux x86_64/aarch64 required; runtime support is not certified
+kernel_version=candidate Version floor only; BPF configuration and privileges remain unverified
+cgroup_v2=candidate Read-only marker check; no mounts or controller changes
+target_directory=unknown Existing non-symlink directory; service ownership/lifecycle unverified
+loader_scope=blocked Current loader permits only the dedicated sandbox hostname and fixed test cgroup
+runtime_acceptance=unknown No BPF loaded: features, permissions, LSM, competing attachments and stop recovery unverified

@@ -2,7 +2,9 @@
 
 [ビジョンと主張の境界](ENTERPRISE_VISION.md) / [ロードマップ](ROADMAP.md) / [タスク](ENTERPRISE_TASKS.md) / [段階と終了条件](../milestones/enterprise/README.md) / [導入・更新](DEPLOYMENT.md)
 
-状態：文書設計のみ承認。機能実装・配布・本番導入は未承認、未実施。
+状態：計画全体は設計候補。個別承認したNixパッケージ・読み取り専用診断の先行実装とARM64 Linux非ロード検証を追加しました。
+[実装手順](NIX_PREFLIGHT.md)と[検証記録](validation/nix-preflight-20261022/README.md)を参照。
+M6サービス・一般サーバー導入・署名付き配布・本番運用は未実施で、計画全体の実行承認へ拡張しません。
 2026-10-22、調査基点 `7589858ee0df2ae9609f62bafc32fe8e1a251891`。
 
 最終ゴールは、対象・制約・停止時の挙動を理解した管理者が、一つのLinuxサービスへ安全に導入・運用・復旧できること。

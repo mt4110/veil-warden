@@ -1,0 +1,14 @@
+{
+  "schema": "veil-warden-package-v1",
+  "system": "aarch64-linux",
+  "source_store_path": "/nix/store/458272nfdq1v4kxndm6msdcgnmyn0d3c-source",
+  "event_abi": 2,
+  "bpf_target": "bpfel-unknown-none",
+  "bpf_cpu": "v3",
+  "loader_scope": "dedicated-sandbox-only",
+  "deployment_ready": false,
+  "sha256": {
+    "bin/veil-warden": "d6560963142482dd184aebc627da5a019ac1d7a273f4fd6b268d608bc663f4dd",
+    "lib/veil-warden/veil-warden-ebpf": "6fdb18c9463e851c98f6b10fa26284963e8fc813fece61f208adbd3dbfaea73e"
+  }
+}

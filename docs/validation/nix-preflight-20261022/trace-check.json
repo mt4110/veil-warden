@@ -1,0 +1,20 @@
+{
+  "diagnose-en.trace": {
+    "lines": 23,
+    "cli_exec_observed": true,
+    "expected_read_paths_observed": true
+  },
+  "diagnose-help.trace": {
+    "lines": 18,
+    "cli_exec_observed": true
+  },
+  "diagnose-invalid.trace": {
+    "lines": 18,
+    "cli_exec_observed": true
+  },
+  "diagnose-ja.trace": {
+    "lines": 23,
+    "cli_exec_observed": true,
+    "expected_read_paths_observed": true
+  }
+}

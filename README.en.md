@@ -49,6 +49,23 @@ Use `veil-warden tui --dry-run` for the sample screen. For the VM, use `veil-war
 
 Show all help with `veil-warden -h`. For command-specific help, use `veil-warden tui -h` or `veil-warden build --help`. Choose Japanese or English with `--lang ja` or `--lang en`; when omitted, the locale selects Japanese for Japanese locales and English otherwise. Example: `veil-warden --lang ja -h`.
 
+## Nix package and read-only preflight
+
+The named Linux output bundles the CLI and its matching eBPF object. **The ARM64 Linux build, artifact consistency, and non-loading diagnostics have been verified.** General-server monitoring, systemd installation, and signed distribution remain unimplemented.
+
+From this repository on an existing Linux system with Nix:
+
+```sh
+nix --extra-experimental-features 'nix-command flakes' build .#veil-warden --option builders ''
+./result/bin/veil-warden diagnose --cgroup /system.slice/example.service --lang en
+```
+
+Select the intended service's cgroup path. Diagnostics do not change configuration or load BPF. Exit 1 with `loader_scope=blocked` is expected for a general service: the dedicated-sandbox loader restriction remains intact. Individual `candidate` checks do not mean deployment approval; `apply_supported` and `deployment_ready` remain false. Use `diagnose --lang ja`, `diagnose --help`, or `diagnose -h` as needed.
+
+Use the explicit binary path; the existing Mac launcher is a separate entry point. On macOS, `cargo run --locked -p veil-warden -- diagnose --help` displays the new help without starting a VM.
+
+See the [package/preflight manual](docs/NIX_PREFLIGHT.md) and [ARM64 Linux validation record](docs/validation/nix-preflight-20261022/README.md) (Japanese). The x86_64 build/runtime and BPF load/monitoring/recovery remain unverified by this evidence.
+
 ## Server deployment and updates
 
 [Deployment design candidates](docs/DEPLOYMENT.md) (Japanese) describe systemd installation, possible DaemonSet placement, link/map lifetime, and update rollback. These are unimplemented and unverified proposals, with no zero-downtime, lossless logging, or production protection guarantee. Implementation awaits a concrete service requirement that existing tools cannot adequately meet.
