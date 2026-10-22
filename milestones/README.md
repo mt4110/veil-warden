@@ -14,3 +14,9 @@
 | M6 | [サービス化](06-service/README.md) | 保留、今回の研究対象外 |
 
 検証結果には commit、VM/kernel/toolchain/依存版、入力条件、実行結果、対象外と未検証事項を記録する。実験用 IP と合成プロセスのみ使い、秘密や実 argv を記録しない。ローカル artifacts は実装時に Git 対象外とする。必要な非機密の結果概要だけ各 README に追記する。
+
+## 追加の設計候補
+
+[企業での限定試用に向けたW0〜W5](enterprise/README.md)を文書として整理しました。
+W1は既存M6に対応します。新たな実装開始やM6完了ではなく、配布・監視連携・policy管理を選ぶための段階案です。
+タスクの完了条件は[一覧](../docs/ENTERPRISE_TASKS.md)、実装との照合は[設計](../docs/ENTERPRISE_READINESS.md)を参照してください。

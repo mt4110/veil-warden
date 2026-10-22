@@ -14,7 +14,7 @@
 - loader は Linux の資源を所有し、リンク・Map の寿命と終了を管理する。
 - アーキテクチャガードは検証用の独立ツールで、監視ランタイムには依存させない。
 
-現在、実装済み workspace は `tools/architecture-guard` だけです。将来の3クレートを先に空で作って完成を装いません。`config/architecture.toml` が workspace 内で許可する依存方向を定義します。ガードは Cargo の renamed/target-specific 依存も確認し、Rust の構文を解析して std/alloc の参照を検出します。
+現在の workspace は `tools/architecture-guard` と `crates/veil-warden-common`、`crates/veil-warden-ebpf`、`crates/veil-warden` です。M0当初のガードだけの構成からM5まで段階的に実装しました。`config/architecture.toml` が workspace 内で許可する依存方向を定義します。ガードは Cargo の renamed/target-specific 依存も確認し、Rust の構文を解析して std/alloc の参照を検出します。
 
 これは完全な静的解析器ではありません。macro が生成するコード、外部依存の挙動、OS の権限、実行時の寿命は別途ビルド・レビュー・実験で確認します。
 
@@ -24,7 +24,7 @@ M0 は `flake.lock` の nixpkgs revision と narHash、`Cargo.lock` の解決結
 
 NixOS の `system.stateVersion` は互換性の基準であり、kernel や package の版固定ではありません。kernel と package は固定 nixpkgs と明示した package set から選びます。
 
-M1 の nightly Rust、aya/aya-ebpf、bpf-linker はまだ未選定です。採用時に公式 API、対応 LLVM、ライセンス、実カーネルでの動作を確認し、固定してから使います。
+M1以降のnightly Rust、aya/aya-ebpf、bpf-linkerの採用値は `flake.nix`、各Cargo manifestとlockを正とします。変更時は公式API、対応LLVM、ライセンス、実カーネルでの動作を確認し、固定してから使います。
 
 ## 安全条件
 

@@ -34,4 +34,12 @@ M0〜M5の実測結果をもとに整理した現状です。課題IDはこの�
 | K14 | 公開前の確認 | バイナリ配布のライセンス・第三者帰属・BPFロード時の宣言をまとめた配布確認は未完 | MIT本文とveil-rsの帰属を保持。実配布物の宣言・依存条件・対象環境を確認してから公開 |
 | K15 | 保留 | M6の常駐サービス化は未着手 | [M6](../milestones/06-service/README.md)の限定scope・初期observe・停止復帰の条件を、別の着手判断後に検証 |
 
+## 企業での限定試用に向けた未実装項目（2026-10-22）
+
+| ID | 状態 | 不足 | 計画上の扱い |
+| --- | --- | --- | --- |
+| K16 | 未実装 | JSON Lines、サービスready/欠落の運用契約、metrics/collector受信の検証 | [W1/W4](ENTERPRISE_TASKS.md)。既存text出力・TUI・Snapshotだけで監視基盤対応済みにしない |
+| K17 | 未実装 | 実行時policyファイル、同じpolicyでのAudit、世代別一括更新 | [W3](ENTERPRISE_READINESS.md)。sandbox.tomlや単一tuple更新とは別 |
+| K18 | 未検証 | 対象上でbuild不要なCLI+BPFの配布、SBOM、署名・identity検証、package更新/復帰 | [W2](ENTERPRISE_TASKS.md)。最初のバイナリ配布前に確認。CI定義だけを実配布の証拠にしない |
+
 重大な未公開脆弱性の詳細はこの文書へ追加せず、[非公開報告の方針](../SECURITY.md#不具合の報告)に従ってください。新しい証拠が得られたときは、基準commit・環境・入力・結果を記録し、状態を更新してください。

@@ -23,6 +23,8 @@ Cloudflareのアカウント登録・組織参加・デプロイは不要です�
 
 | 文書 | 内容 |
 | --- | --- |
+| [企業向けビジョンと主張の境界](ENTERPRISE_VISION.md) | 提供価値の仮説、利用場面の採否、保証しない表現 |
+| [企業での限定試用に向けた設計](ENTERPRISE_READINESS.md) | 実装・証拠の現在地、JSON/配布/設定/metrics/署名の採否と境界 |
 | [導入と更新の設計候補](DEPLOYMENT.md) | 未実装のsystemd/DaemonSet案、リンクとMapの保持、更新・復帰の条件 |
 | [アーキテクチャ](ARCHITECTURE.md) | フック、ABI、Mapとリンクの所有、制御・表示・スキャンの境界 |
 | [ディレクトリ構成](DIRECTORY_LAYOUT.md) | ファイル配置とクレートの責務 |
@@ -45,6 +47,8 @@ Cloudflareのアカウント登録・組織参加・デプロイは不要です�
 | 文書 | 内容 |
 | --- | --- |
 | [ロードマップ](ROADMAP.md) | 完了した範囲、現在の終了点、保留している作業 |
+| [企業向け候補のタスク](ENTERPRISE_TASKS.md) | W0〜W5の依存と受け入れ条件。全実装未着手 |
+| [企業向け候補の段階](../milestones/enterprise/README.md) | 既存M6との対応、配布前ゲート、継続・中止条件 |
 | [研究テーマ](RESEARCH.md) | 検証する問い、最小の試験、終了条件、成果への接続 |
 | [マイルストーン一覧](../milestones/README.md) | M0〜M6の状態と各段階への入口 |
 

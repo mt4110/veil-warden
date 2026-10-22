@@ -64,6 +64,8 @@ VMはmacOSのlaunchdでバックグラウンド実行します。ターミナル
 
 単体Linuxサーバーへのsystemd導入、将来のDaemonSet配置、リンクとMapの保持、更新失敗時の復帰を[設計候補](docs/DEPLOYMENT.md)として整理しています。いずれも未実装・未検証です。無停止更新、ログ欠落ゼロ、本番保護を保証する機能ではありません。具体的な対象サービスと既存手段の不足が確認できるまで、実装は広げません。
 
+企業での限定試用に向けた候補は、[実装との照合・設計](docs/ENTERPRISE_READINESS.md)、[タスク](docs/ENTERPRISE_TASKS.md)、[段階W0〜W5](milestones/enterprise/README.md)に整理しています。JSON/observeサービスと検証付き配布を先に評価し、metrics・DaemonSet・保持更新は必要性に応じて選びます。今回は文書計画のみで、M6の保留を解除していません。
+
 ## 手動でVMを準備する場合（開発者向け）
 
 Apple Silicon Mac と Nix を使います。mise は不要です。初回は数 GiB のダウンロードがあり、インターネット接続が必要です。
