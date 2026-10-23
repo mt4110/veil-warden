@@ -8,6 +8,8 @@
 
 | 文書 | 内容 |
 | --- | --- |
+| [サービス同定の検証記録](SERVICE_IDENTITY_VALIDATION.md) | ARM64の隔離VM1台で確認した範囲・入力hash・停止証拠と限界 |
+| [サービス同定](SERVICE_IDENTITY.md) | systemdサービス名からPID・cgroup・起動世代を照合する非ロード診断 |
 | [Nixパッケージと導入前診断](NIX_PREFLIGHT.md) | CLI+BPFの一体パッケージ、日英の非ロード診断、結果の読み方 |
 | [ARM64 Linuxパッケージ検証](validation/nix-preflight-20261022/README.md) | 実ビルド・整合性・診断・syscall追跡、未確認範囲 |
 | [利用場面と模擬TUI](USE_CASES.md) | 何に使うか、Macのdry-run、操作例、Wireshark等との使い分け |

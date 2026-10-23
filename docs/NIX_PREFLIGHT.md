@@ -43,14 +43,15 @@ BPFの標準ライブラリ依存は `config/bpf-stdlib-Cargo.lock` に固定し
 ## 診断を使う
 
 既存のsystemdサービスのcgroupは、必要なら管理者が以下の読み取り操作で確認します。
-診断自身はsystemctlや外部コマンドを起動しません。
+`--cgroup`モードはsystemctlや外部コマンドを起動しません。
+サービス名を指定する`--service`モードはbusctlによるローカルIPCを使います。契約は[サービス同定](SERVICE_IDENTITY.md)を参照してください。
 
 ```sh
 systemctl show example.service --property=ControlGroup --value
 ```
 
 得られた `/system.slice/example.service` のような、cgroup mountからのパスを明示します。
-`/sys/fs/cgroup` は先頭に付けません。パスからサービス所有者やPIDの所属を認定する機能はまだありません。
+`/sys/fs/cgroup` は先頭に付けません。このパス指定モードではサービス名やPIDの所属を同定しません。[別の`--service`モード](SERVICE_IDENTITY.md)を追加しています（[ARM64での限定検証](SERVICE_IDENTITY_VALIDATION.md)）。
 
 ```sh
 ./result/bin/veil-warden diagnose --cgroup /system.slice/example.service --lang ja
@@ -65,8 +66,8 @@ CLIのみをローカルビルドして試す場合も同じ構文です。
 cargo run --locked -p veil-warden -- diagnose --cgroup /system.slice/example.service --lang ja
 ```
 
-root権限は要求しません。ファイルへの書き込み、サービス操作、cgroupの作成・移動、mount、BPF syscall、ネットワーク接続は行いません。
-診断本体が読むのはLinuxのkernel release、hostname、cgroup controllersと、指定パスのメタデータです。
+`--cgroup`モードはroot権限を要求しません。ファイルへの書き込み、サービス操作、cgroupの作成・移動、mount、BPF syscall、ネットワーク接続は行いません。
+このパス指定モードが読むのはLinuxのkernel release、hostname、cgroup controllersと、指定パスのメタデータです。
 各テキスト読取は64 KiBまで。argv・環境変数・秘密ファイルを走査せず、生のhostname等は出力しません。
 CLIの起動自体に必要な共有ライブラリ等のOSによる読取は別です。
 
@@ -88,7 +89,7 @@ deployment_ready=false
 
 | 判定 | 意味 |
 | --- | --- |
-| `candidate` | その項目の限定的な静的条件だけを確認。全体の適合判定ではない |
+| `candidate` | その項目の限定的な条件・照合のみを確認。全体の適合判定ではない |
 | `blocked` | 現行実装の制約に合わない |
 | `unknown` | この読み取り診断では確認できない |
 
@@ -106,5 +107,5 @@ hostnameの変更で制限を回避しないでください。
 
 ## 次段階との境界
 
-対象サービスの安定した同定と再検証、一般サーバー向けloader、JSONイベント、systemd readiness、停止・撤去は未実装です。
+サービス同定は非ロード診断として先行実装しました（[検証境界](SERVICE_IDENTITY.md)）。適用時の再検証、一般サーバー向けloader、JSONイベント、systemd readiness、停止・撤去は未実装です。
 今回は設定生成や適用コマンドを出しません。実通信の試験やx86_64での動作実証には別途許可と証拠が必要です。

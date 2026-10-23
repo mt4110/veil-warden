@@ -1,0 +1,111 @@
+{
+  "schema": "veil-warden-service-identity-validation-v1",
+  "observed_on": "2026-10-23",
+  "status": "passed-nonloading",
+  "source_base_commit": "3a7281648ef7a0e62626c79894222591a51bbbe1",
+  "source_state_at_vm_run": "uncommitted local changes; runtime source hashes match this PR",
+  "runtime_source_sha256": {
+    "crates/veil-warden/src/diagnose.rs": "92c17d0528f7a80e75126d9c054fbe9a238c05f0f8efc057c749bed1d6378c76",
+    "crates/veil-warden/src/main.rs": "1a3608be8d93084bb56272d9b241f9c2e9b561353bf6f2775f1322837244fab9",
+    "crates/veil-warden/src/service_identity.rs": "4fc81f3f0fef2b18c22428543cf5e672e007a80460a291d44efe1f59d9f7baf8"
+  },
+  "arena": {
+    "pull_request": "https://github.com/mt4110/veil-arena/pull/35",
+    "merged_commit": "4b2291052c22f518aab04797e0070d67c98b94c4",
+    "scenario": "warden-nonloading-v1",
+    "source_state_at_vm_run": "local implementation before PR creation; see Arena published validation"
+  },
+  "environment": {
+    "host": "macOS ARM64",
+    "guest": "NixOS aarch64-linux",
+    "accelerator": "tcg",
+    "vcpus": 2,
+    "memory_mib": 4096,
+    "network": "no NIC",
+    "writable_share": "evidence only",
+    "diagnostic_uid": 501,
+    "capabilities": [
+      "CAP_SYS_PTRACE"
+    ],
+    "system_call_filter": "~bpf",
+    "restrict_address_families": [
+      "AF_UNIX"
+    ]
+  },
+  "boot_id": "2afbfbbf-f1c2-42fd-a1a1-dd280892b662",
+  "package_manifest": {
+    "schema": "veil-warden-package-v1",
+    "system": "aarch64-linux",
+    "source_store_path": "/nix/store/zyynv5xs7k0fmf3pyv2g3lnwr7rn4vj5-source",
+    "event_abi": 2,
+    "bpf_target": "bpfel-unknown-none",
+    "bpf_cpu": "v3",
+    "loader_scope": "dedicated-sandbox-only",
+    "deployment_ready": false,
+    "sha256": {
+      "bin/veil-warden": "3e054e66f234ec7198c8f976317a9be840e65be5fb73b70e8ca6109616576435",
+      "lib/veil-warden/veil-warden-ebpf": "6fdb18c9463e851c98f6b10fa26284963e8fc813fece61f208adbd3dbfaea73e"
+    }
+  },
+  "cases": {
+    "running": {
+      "native_returncode": 1,
+      "bpf_syscall_count": 0,
+      "socket_families": [
+        "AF_UNIX"
+      ],
+      "trace_sha256": "36ae8de229b833f4fe45f7bfd7e4dfecf680e94fb6ad96731543a5d1ee510bc5"
+    },
+    "missing": {
+      "native_returncode": 1,
+      "bpf_syscall_count": 0,
+      "socket_families": [
+        "AF_UNIX"
+      ],
+      "trace_sha256": "7c9c7f437c14ebd6dac4c2fe1e76953eaa6b7cfd04e6760f9a7e6be2b1eb826f"
+    },
+    "protected": {
+      "native_returncode": 2,
+      "bpf_syscall_count": 0,
+      "socket_families": [],
+      "trace_sha256": "932e620b0c2b5643cf5b540352fd9fa03d6b5fb2b8e6afa521a94cc47200f5f1"
+    },
+    "mixed": {
+      "native_returncode": 2,
+      "bpf_syscall_count": 0,
+      "socket_families": [],
+      "trace_sha256": "86b682086cbbcb1ed91be170a98658b6859b3601eb80941afdf97f379eb717e1"
+    }
+  },
+  "terminal": {
+    "writer_uid": 501,
+    "output_owner_uid": 501,
+    "root_and_nested_markers_match": true
+  },
+  "stop": {
+    "reason": "service_completed",
+    "qemu_reaped": true,
+    "evidence_synced": true,
+    "evidence_synced_before_stop": true,
+    "escalated": false,
+    "qemu_exit_code": 0,
+    "lifecycle_exit_code": 0
+  },
+  "independent_controller_and_qemu_absence_verified": true,
+  "guest_self_poweroff_verified": false,
+  "limits": {
+    "deployment_ready": false,
+    "runtime_protection_verified": false,
+    "x86_64_service_identity_runtime_verified": false,
+    "production_service_verified": false,
+    "namespace_or_restart_fault_injected_in_vm": false,
+    "trace_scope": "diagnostic process and its child processes, not all OS processes"
+  },
+  "evidence_sha256": {
+    "run-1/nonloading/running.stdout": "ca652d64a1d6a5589d21b4446356b65d5e421c5b671abb8d35816abfbbcdc341",
+    "run-1/nonloading/missing.stdout": "f2be5d6a569cfb546ac0e6175fafd8b361c781bdd2c623a759955aa456336e50",
+    "run-1/nonloading/preflight-result.json": "7895fcfc52697e645ae760e95bda051ae72f2eb11fcd495aedb5516dd66e5fec",
+    "run-1/terminal.json": "044f2bcd29d6c318c7386788430b814c47436ed0162e4e15e0f77ebc7c093231",
+    "run-1/vm-stop.json": "cc0b5c0799d1930d04b6036d6eaac869933ffb6ed0270fe2035629b055e37a60"
+  }
+}

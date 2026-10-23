@@ -6,16 +6,18 @@ const LIMIT: u64 = 65536;
 
 pub fn help() {
     println!(
-        "veil-warden diagnose --cgroup /slice/app.service [--lang ja|en]\nRead-only: no BPF load or configuration changes.\n読み取り専用：BPFロード・設定変更なし。\nExit: 1=blocked / 不適合, 2=invalid input / 入力不正, 3=unverified / 未確認.\nNo deployment-ready result is emitted / 導入可能とは判定しません。"
+        "veil-warden diagnose (--cgroup /slice/app.service | --service app.service) [--lang ja|en]\nRead-only: no BPF load or configuration changes.\n読み取り専用：BPFロード・設定変更なし。\nExit: 1=blocked / 不適合, 2=invalid input / 入力不正, 3=unverified / 未確認.\nNo deployment-ready result is emitted / 導入可能とは判定しません。"
     );
 }
 #[derive(Debug, PartialEq, Eq)]
 struct Request {
     cgroup: String,
+    service: Option<String>,
     japanese: bool,
 }
 fn parse(args: &[String]) -> Result<Request, &'static str> {
     let mut cgroup = None;
+    let mut service = None;
     let mut language = None;
     let mut args = args.iter();
     while let Some(arg) = args.next() {
@@ -27,6 +29,9 @@ fn parse(args: &[String]) -> Result<Request, &'static str> {
                         .clone(),
                 )
             }
+            "--service" if service.is_none() => {
+                service = Some(args.next().ok_or("missing service")?.clone());
+            }
             "--lang" if language.is_none() => {
                 language = Some(
                     args.next()
@@ -37,16 +42,28 @@ fn parse(args: &[String]) -> Result<Request, &'static str> {
             _ => return Err("invalid or duplicate option / 不正または重複したオプション"),
         }
     }
-    let cgroup = cgroup.ok_or("--cgroup is required / --cgroup が必要です")?;
-    validate_scope(&cgroup)?;
+    if cgroup.is_some() == service.is_some() {
+        return Err("select exactly one of --cgroup or --service / 対象指定は一つ必要です");
+    }
+    if let Some(unit) = &service {
+        super::service_identity::validate_unit(unit)?;
+    }
+    let cgroup = cgroup.unwrap_or_default();
+    if service.is_none() {
+        validate_scope(&cgroup)?;
+    }
     let japanese = match language.as_deref().unwrap_or("ja") {
         "ja" => true,
         "en" => false,
         _ => return Err("--lang must be ja or en / 言語は ja または en"),
     };
-    Ok(Request { cgroup, japanese })
+    Ok(Request {
+        cgroup,
+        service,
+        japanese,
+    })
 }
-fn validate_scope(scope: &str) -> Result<(), &'static str> {
+pub(crate) fn validate_scope(scope: &str) -> Result<(), &'static str> {
     if !scope.starts_with('/') || scope.len() > 1024 || scope.ends_with('/') {
         return Err("invalid cgroup path / cgroupパスが不正です");
     }
@@ -77,7 +94,7 @@ fn validate_scope(scope: &str) -> Result<(), &'static str> {
     }
     Ok(())
 }
-fn read_bounded(path: &Path) -> Option<String> {
+pub(crate) fn read_bounded(path: &Path) -> Option<String> {
     let file = File::open(path).ok()?;
     let mut bytes = Vec::new();
     file.take(LIMIT + 1).read_to_end(&mut bytes).ok()?;
@@ -163,7 +180,10 @@ fn evaluate(
         },
     ]
 }
-fn non_symlink_directory(mount: &Path, scope: &str) -> bool {
+pub(crate) fn non_symlink_directory(mount: &Path, scope: &str) -> bool {
+    if validate_scope(scope).is_err() {
+        return false;
+    }
     let mut path = mount.to_path_buf();
     if !std::fs::symlink_metadata(&path).is_ok_and(|m| m.is_dir() && !m.is_symlink()) {
         return false;
@@ -188,6 +208,15 @@ pub fn run(args: &[String]) -> i32 {
             return 2;
         }
     };
+    let identity = request
+        .service
+        .as_deref()
+        .map(super::service_identity::collect);
+    let scope = identity
+        .as_ref()
+        .and_then(|r| r.as_ref().ok())
+        .map(|s| s.cgroup.as_str())
+        .unwrap_or(&request.cgroup);
     let linux = cfg!(target_os = "linux");
     let kernel = if linux {
         read_bounded(Path::new("/proc/sys/kernel/osrelease"))
@@ -205,13 +234,22 @@ pub fn run(args: &[String]) -> i32 {
         std::env::consts::ARCH,
         kernel.as_deref(),
         linux && read_bounded(&mount.join("cgroup.controllers")).is_some(),
-        linux && non_symlink_directory(mount, &request.cgroup),
+        linux && non_symlink_directory(mount, scope),
         hostname.as_deref(),
-        &request.cgroup,
+        scope,
     );
     println!(
         "schema=veil-warden-preflight-v1\nread_only=true\nbpf_loaded=false\napply_supported=false\ndeployment_ready=false"
     );
+    if let Some(identity) = identity {
+        match identity {
+            Ok(s) => println!(
+                "service_identity=candidate\ncanonical_unit={}\nmain_pid={}\ncontrol_group={}\ninvocation_id={}\nidentity_snapshot=bounded-non-atomic",
+                s.unit, s.pid, s.cgroup, s.invocation
+            ),
+            Err(reason) => println!("service_identity=unknown\nidentity_reason={reason}"),
+        }
+    }
     for check in &checks {
         println!(
             "{}={} {}",
@@ -323,6 +361,8 @@ mod tests {
                 .as_nanos()
         ));
         std::fs::create_dir(&fixture).unwrap();
+        assert!(!non_symlink_directory(&fixture, ""));
+        assert!(!non_symlink_directory(&fixture, "/"));
         let text = fixture.join("text");
         std::fs::write(&text, vec![b'x'; LIMIT as usize]).unwrap();
         assert_eq!(read_bounded(&text).unwrap().len(), LIMIT as usize);

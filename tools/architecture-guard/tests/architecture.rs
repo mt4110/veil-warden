@@ -408,7 +408,16 @@ fn m3_hooks_share_scoped_policy_and_user_metadata_reads_are_scoped() {
             assert!(
                 (["/proc/{pid}/comm", "/proc/sys/kernel/osrelease"].contains(&literal.as_str())
                     || (path.file_name().unwrap() == "scan.rs"
-                        && ["/proc/{}", "/proc/self/fd/{}/{name}"].contains(&literal.as_str()))),
+                        && ["/proc/{}", "/proc/self/fd/{}/{name}"].contains(&literal.as_str()))
+                    || (path.file_name().unwrap() == "service_identity.rs"
+                        && [
+                            "/proc/{}",
+                            "/proc/1/ns/{ns}",
+                            "/proc/self/ns/{ns}",
+                            "/proc/self/cgroup",
+                            "/proc/sys/kernel/random/boot_id"
+                        ]
+                        .contains(&literal.as_str()))),
                 "unexpected proc read in {}: {literal}",
                 path.display()
             );
@@ -532,5 +541,92 @@ fn m5_scan_cannot_mutate_policy_enumerate_processes_or_export_findings() {
         let mut deps = BTreeSet::new();
         dependency_packages(&read_toml(&root().join(path)), &mut deps);
         assert!(deps.is_disjoint(&BTreeSet::from(["veil-core".into(), "rustix".into()])));
+    }
+}
+
+#[test]
+fn service_identity_has_only_read_queries_and_no_privilege_or_mutation_calls() {
+    let source =
+        fs::read_to_string(root().join("crates/veil-warden/src/service_identity.rs")).unwrap();
+    struct Boundary {
+        strings: Vec<String>,
+        forbidden: Vec<String>,
+    }
+    impl<'ast> Visit<'ast> for Boundary {
+        fn visit_lit_str(&mut self, node: &'ast syn::LitStr) {
+            self.strings.push(node.value());
+            visit::visit_lit_str(self, node);
+        }
+        fn visit_expr_call(&mut self, node: &'ast syn::ExprCall) {
+            if let syn::Expr::Path(path) = &*node.func
+                && let Some(last) = path.path.segments.last()
+                && [
+                    "write",
+                    "create",
+                    "create_dir",
+                    "read_dir",
+                    "setuid",
+                    "setgid",
+                    "bpf",
+                    "mount",
+                ]
+                .contains(&last.ident.to_string().as_str())
+            {
+                self.forbidden.push(last.ident.to_string());
+            }
+            visit::visit_expr_call(self, node);
+        }
+        fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
+            if [
+                "write",
+                "write_all",
+                "create",
+                "setuid",
+                "setgid",
+                "attach",
+                "load",
+            ]
+            .contains(&node.method.to_string().as_str())
+            {
+                self.forbidden.push(node.method.to_string());
+            }
+            visit::visit_expr_method_call(self, node);
+        }
+        fn visit_expr_unsafe(&mut self, node: &'ast syn::ExprUnsafe) {
+            self.forbidden.push("unsafe".into());
+            visit::visit_expr_unsafe(self, node);
+        }
+    }
+    let mut boundary = Boundary {
+        strings: vec![],
+        forbidden: vec![],
+    };
+    boundary.visit_file(&syn::parse_file(&source).unwrap());
+    assert!(boundary.forbidden.is_empty(), "{:?}", boundary.forbidden);
+    for required in [
+        "GetUnit",
+        "get-property",
+        "--auto-start=no",
+        "--timeout=1s",
+        "bus-deadline-expired",
+    ] {
+        assert!(
+            boundary.strings.iter().any(|s| s == required),
+            "missing {required}"
+        );
+    }
+    for forbidden in [
+        "LoadUnit",
+        "StartUnit",
+        "StopUnit",
+        "SetUnitProperties",
+        "set-property",
+        "--user",
+        "sudo",
+    ] {
+        assert!(
+            !boundary.strings.iter().any(|s| s == forbidden),
+            "unexpected {forbidden}"
+        );
     }
 }
