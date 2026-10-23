@@ -33,6 +33,19 @@ class DiagnoseCLI(unittest.TestCase):
                 self.assertIn('platform=blocked', result.stdout)
             self.assertNotIn('attached mode=', result.stdout)
 
+    def test_service_mode_without_runtime_loading(self):
+        result = self.run_cli('diagnose', '--service', 'arena-fixture.service', '--lang', 'en')
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn('service_identity=unknown', result.stdout)
+        self.assertIn('bpf_loaded=false', result.stdout)
+        self.assertIn('deployment_ready=false', result.stdout)
+        for unit in ('ssh.service', 'docker.service', '../app.service', 'app@.service'):
+            bad = self.run_cli('diagnose', '--service', unit)
+            self.assertEqual(bad.returncode, 2)
+            self.assertEqual(bad.stdout, '')
+        mixed = self.run_cli('diagnose', '--service', 'app.service', '--cgroup', '/a/app.service')
+        self.assertEqual(mixed.returncode, 2)
+
     def test_invalid_requests_do_not_reach_diagnosis_or_loader(self):
         for args in [[], ['--cgroup', '/'], ['--cgroup', '/system.slice/ssh.service'],
                      ['--cgroup', '/a/x.service', '--enforce'], ['--help', '--enforce'],

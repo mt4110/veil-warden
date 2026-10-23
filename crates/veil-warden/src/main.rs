@@ -16,6 +16,7 @@ mod policy;
 mod process;
 #[cfg_attr(not(target_os = "linux"), allow(dead_code, unused_imports))]
 mod scan;
+mod service_identity;
 mod terminal_session;
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 mod tui;

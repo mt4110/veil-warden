@@ -70,17 +70,22 @@ CLIと対応するeBPFオブジェクトを一組にするNixパッケージを�
 
 ```sh
 nix --extra-experimental-features 'nix-command flakes' build .#veil-warden --option builders ''
+./result/bin/veil-warden diagnose --service example.service --lang ja
+# パス指定だけを調べる場合（--serviceとは同時指定しない）
 ./result/bin/veil-warden diagnose --cgroup /system.slice/example.service --lang ja
 ```
 
-`example.service`は調べたいサービスのcgroupパスに置き換えます。
+`--service`には稼働中のsystemdサービス名、`--cgroup`にはcgroupパスを指定します。
+サービス名指定ではPID・cgroup・起動世代を取得前後で照合し、取得不能・変化は`unknown`にします。
+Macでは`service_identity=unknown`、`platform=blocked`となり、サービス同定は行いません。
 診断は設定を変更せず、BPFもロードしません。一般サーバーでは専用VM制限による`blocked`と終了コード1が期待されます。
 部分的な`candidate`を全体の適合判定にせず、`apply_supported=false`と`deployment_ready=false`を維持します。
 `diagnose --lang en`、`diagnose --help`、`diagnose -h`にも対応します。
 既存のMac用ランチャーとは別のCLIなので、上記のパスを明示してください。Mac上では`cargo run --locked -p veil-warden -- diagnose --help`でヘルプを確認できます。
 
-[パッケージと診断の手順](docs/NIX_PREFLIGHT.md) / [ARM64 Linux検証記録と限界](docs/validation/nix-preflight-20261022/README.md)
-を参照してください。x86_64の実ビルド・実行、BPFロード・監視・停止復帰の追加検証は未実施です。
+[サービス名による読み取り診断](docs/SERVICE_IDENTITY.md)（ARM64の隔離VM1台で非ロード同定を確認） / [パッケージと診断の手順](docs/NIX_PREFLIGHT.md) / [ARM64 Linux検証記録と限界](docs/validation/nix-preflight-20261022/README.md)
+を参照してください。[サービス同定の検証記録](docs/SERVICE_IDENTITY_VALIDATION.md)はArenaの既存policy試験と別の記録です。
+今回のサービス同定について、x86_64実行・実サービスへの適用・BPFロード・監視の追加検証は未実施です。
 
 ## クラウド導入・稼働中サーバーでの更新
 
