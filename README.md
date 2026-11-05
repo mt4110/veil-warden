@@ -168,6 +168,22 @@ TUIは接続履歴、拒否ルール、モード、欠落数を表示します�
 
 [仕様・安全性・制約](docs/SECRET_WARNING.md)と[M5検証記録](milestones/05-secret-warning/README.md)を参照してください。今回の研究はM5で区切り、M6の常駐化は保留します。
 
+## Linux実機でのループバック試験（開発者向け）
+
+`test-loopback` はsystemdとcgroup v2があるLinuxで、試験コマンド自身だけが入った一時scopeに接続フックを付けます。通常の `connect` / `policy` は専用VM用です。信頼できる同じソースからビルドしたCLIとBPFオブジェクトを使ってください。
+
+```sh
+nix develop --command bash ./scripts/build-counter.sh
+sudo bpftool -j link show
+sudo systemd-run --scope --collect --slice=warden-test.slice \
+  --unit="veil-warden-loopback-$(printf '%x' "$$").scope" -- \
+  "$PWD/artifacts/build/veil-warden" test-loopback \
+  --object "$PWD/artifacts/build/veil-warden-ebpf"
+sudo bpftool -j link show
+```
+
+接続先は `127.0.0.1` と `::1` の試験用ポートです。両方で観測・拒否・ルール解除・再拒否・フック解除後の疎通を試し、errno、受信数とイベントを出力します。試験プロセスが保持するリンクはファイル記述子で管理します。前後のリンク一覧を比較し、試験用のリンクが残っていないことを確認してください。
+
 ## 文書とOSSの案内
 
 [ドキュメント一覧](docs/README.md)に全資料を目的別にまとめています。[変更履歴](CHANGELOG.md)、[セキュリティ報告](SECURITY.md)、[ライセンス](LICENSE.md)、[第三者の帰属](docs/third-party/veil-rs-MIT.txt)もこちらから辿れます。
