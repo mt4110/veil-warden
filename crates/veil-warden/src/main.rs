@@ -8,6 +8,8 @@ mod dry_run;
 mod events;
 #[cfg(target_os = "linux")]
 mod loader;
+#[cfg(target_os = "linux")]
+mod loopback_test;
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 mod output;
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
@@ -24,6 +26,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.first().is_some_and(|arg| arg == "diagnose") {
         std::process::exit(diagnose::run(&args[1..]));
+    }
+    if args.first().is_some_and(|arg| arg == "test-loopback") {
+        #[cfg(target_os = "linux")]
+        return loopback_test::run(&args[1..]);
+        #[cfg(not(target_os = "linux"))]
+        return Err("test-loopback requires Linux".into());
     }
     if args == ["--dry-run"] {
         return dry_run::run();

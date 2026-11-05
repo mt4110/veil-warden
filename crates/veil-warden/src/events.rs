@@ -50,7 +50,7 @@ pub fn run(options: Options, stop: &Arc<AtomicBool>) -> Result<(), Error> {
         _ => Ok(()),
     }
 }
-fn attach(bpf: &mut Ebpf, cgroup: &File, name: &str) -> Result<FdLink, Error> {
+pub(crate) fn attach(bpf: &mut Ebpf, cgroup: &File, name: &str) -> Result<FdLink, Error> {
     let p: &mut CgroupSockAddr = bpf
         .program_mut(name)
         .ok_or("connect program missing")?

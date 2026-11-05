@@ -409,6 +409,8 @@ fn m3_hooks_share_scoped_policy_and_user_metadata_reads_are_scoped() {
                 (["/proc/{pid}/comm", "/proc/sys/kernel/osrelease"].contains(&literal.as_str())
                     || (path.file_name().unwrap() == "scan.rs"
                         && ["/proc/{}", "/proc/self/fd/{}/{name}"].contains(&literal.as_str()))
+                    || (path.file_name().unwrap() == "loopback_test.rs"
+                        && literal == "/proc/self/cgroup")
                     || (path.file_name().unwrap() == "service_identity.rs"
                         && [
                             "/proc/{}",
